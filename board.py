@@ -94,46 +94,69 @@ def _load_cache():
         return {'boards': {}, 'deadlines': {}}
 
 
-def board_posts(level, program):
-    """Assignments + announcements for one level/program, cached and shared by all users."""
+def parse_courses(page):
+    """Course picker on a board page → [{'code', 'name'}] (only the courses of that level/program)."""
+    select = re.search(r'<select name="course"[^>]*>(.*?)</select>', page, re.S)
+    found = []
+    for label in re.findall(r'<option value="\d+"[^>]*>(.*?)</option>', select.group(1) if select else '', re.S):
+        code, _, name = _text(label).partition(' - ')
+        if name:
+            found.append({'code': code.strip(), 'name': name.strip()})
+    return found
+
+
+def board_posts(level, program, with_courses=False):
+    """Posts (announcements + every assignment, open or closed) for one level/program,
+    cached for REFRESH seconds and shared by all users."""
     key = f'{level}:{program}'
     with _lock:
         cache = _load_cache()
         entry = cache['boards'].get(key)
-        if entry and time.time() - entry['fetched'] < REFRESH:
-            return entry['posts']
-        page = _get(f'{base_url()}/?year={int(level)}&program={program}')
-        posts = parse_board(page)
-        for post in posts:
-            if post['kind'] != 'assignment':
-                continue
-            if post['id'] not in cache['deadlines']:
-                try:
-                    cache['deadlines'][post['id']] = parse_deadline(_get(f"{base_url()}/post/{post['id']}/calendar.ics"))
-                except (urllib.error.URLError, TimeoutError, ValueError):
+        if not (entry and time.time() - entry['fetched'] < REFRESH and 'courses' in entry):
+            base = f'{base_url()}/?year={int(level)}&program={program}'
+            page = _get(base)
+            posts, ids = parse_board(page), set()
+            ids = {p['id'] for p in posts}
+            for number in range(1, 6):  # older assignments live on later pages
+                more = [p for p in parse_board(_get(f'{base}&type=assignment&page={number}')) if p['id'] not in ids]
+                if not more:
+                    break
+                posts += more
+                ids |= {p['id'] for p in more}
+            for post in posts:
+                if post['kind'] != 'assignment':
                     continue
-            post['deadline'] = cache['deadlines'].get(post['id'], '')
-        cache['boards'][key] = {'fetched': time.time(), 'posts': posts}
-        tmp = _cache_path().with_suffix('.tmp')
-        tmp.write_text(json.dumps(cache, ensure_ascii=False))
-        tmp.replace(_cache_path())
-        return posts
+                if post['id'] not in cache['deadlines']:
+                    try:
+                        cache['deadlines'][post['id']] = parse_deadline(_get(f"{base_url()}/post/{post['id']}/calendar.ics"))
+                    except (urllib.error.URLError, TimeoutError, ValueError):
+                        continue
+                post['deadline'] = cache['deadlines'].get(post['id'], '')
+            entry = {'fetched': time.time(), 'posts': posts, 'courses': parse_courses(page)}
+            cache['boards'][key] = entry
+            tmp = _cache_path().with_suffix('.tmp')
+            tmp.write_text(json.dumps(cache, ensure_ascii=False))
+            tmp.replace(_cache_path())
+        return (entry['posts'], entry['courses']) if with_courses else entry['posts']
 
 
-def posts_for(level, program):
+def posts_for(level, program, with_courses=False):
     if program:
-        return board_posts(level, program)
-    # No program chosen yet: only posts every program of this level sees (whole-level posts).
-    boards = [board_posts(level, p) for p in accounts.PROGRAMS]
-    common = set.intersection(*({p['id'] for p in b} for b in boards))
-    return [p for p in boards[0] if p['id'] in common]
+        return board_posts(level, program, with_courses)
+    # No program chosen yet: only what every program of this level sees (whole-level posts, common courses).
+    boards = [board_posts(level, p, True) for p in accounts.PROGRAMS]
+    common = set.intersection(*({p['id'] for p in posts} for posts, _ in boards))
+    posts = [p for p in boards[0][0] if p['id'] in common]
+    codes = set.intersection(*({c['code'] for c in courses} for _, courses in boards))
+    courses = [c for c in boards[0][1] if c['code'] in codes]
+    return (posts, courses) if with_courses else posts
 
 
 def _course_for(post, courses):
     code, name = post.get('course_code', '').lower(), post.get('course_name', '').lower()
     for course in courses:
-        title = course['title'].lower()
-        if (code and code in title) or (name and (name in title or title in name)):
+        title = course['title'].strip().lower()
+        if (code and (course.get('board_code', '').lower() == code or code in title)) or (name and title == name):
             return course['id']
     if not (code or name):
         return ''
@@ -145,32 +168,56 @@ def _course_for(post, courses):
 
 
 def sync(force=False):
-    """Add new assignments from the board to the current user's tasks. Returns how many were added."""
+    """Bring the board into the user's space: the courses of their level/program (once), and every
+    assignment as a task. Open ones stay open; ones whose deadline already passed come in as closed
+    (marked done, labelled "closed" and left out of the weekly review)."""
     profile = accounts.college_profile()
-    settings = core.setting('board_sync', {'enabled': True, 'imported': [], 'last': 0})
+    settings = core.setting('board_sync', {'enabled': True, 'last': 0})
     if not enabled() or not profile.get('college') or not profile.get('level') or not settings.get('enabled', True):
         return {'added': 0, 'skipped': 'off'}
     if not force and time.time() - settings.get('last', 0) < USER_EVERY:
         return {'added': 0, 'skipped': 'recent'}
-    posts = posts_for(profile['level'], profile.get('program', ''))
-    imported, added = set(settings.get('imported', [])), []
+    level, program = profile['level'], profile.get('program', '')
+    posts, board_courses = posts_for(level, program, with_courses=True)
     courses = core.rows('courses')
+    made_courses = 0
+    profile_key = f'{level}:{program}'
+    if settings.get('courses_for') != profile_key:  # once per level/program, so deleted courses stay deleted
+        for c in board_courses:
+            before = len(courses)
+            _course_for({'course_code': c['code'], 'course_name': c['name']}, courses)
+            made_courses += len(courses) > before
+        settings['courses_for'] = profile_key
+    tasks = core.rows('tasks')
+    seen = set(settings.get('created', []))
+    for t in tasks:
+        board = t.get('board') or {}
+        if board.get('id'):
+            seen.add(str(board['id']))
+            continue
+        old = re.search(r'/post/(\d+)/', t.get('details', ''))
+        if old and 'HNU Board' in t.get('details', ''):  # imported before tasks carried a board tag
+            seen.add(old.group(1))
+            core.put('tasks', t | {'board': {'id': old.group(1), 'url': f"{base_url()}/post/{old.group(1)}/", 'closed': False}})
+    created, added, closed = set(settings.get('created', [])), [], 0
     now = datetime.now(timezone.utc)
     for post in posts:
-        if post['kind'] != 'assignment' or post['id'] in imported or not post.get('deadline'):
+        if post['kind'] != 'assignment' or post['id'] in seen or not post.get('deadline'):
             continue
-        if datetime.fromisoformat(post['deadline']) < now:
-            imported.add(post['id'])  # already closed: don't add it later either
-            continue
+        is_closed = datetime.fromisoformat(post['deadline']) < now
         link = f"{base_url()}/post/{post['id']}/"
         details = (post['body'] + '\n\n' if post['body'] else '') + 'من قناة الكلية عبر HNU Board: ' + link
         task = core.Task(title=post['title'] or 'Assignment', course_id=_course_for(post, courses), due=post['deadline'],
-                         details=details[:10000], priority='high')
-        core.save_entry('tasks', task)
-        imported.add(post['id'])
-        added.append(post['title'])
-    core.set_setting('board_sync', settings | {'imported': sorted(imported)[-2000:], 'last': time.time(), 'error': ''})
-    return {'added': len(added), 'titles': added}
+                         details=details[:10000], priority='normal' if is_closed else 'high', status='done' if is_closed else 'todo')
+        value = core.save_entry('tasks', task)
+        core.put('tasks', value | {'board': {'id': post['id'], 'url': link, 'closed': is_closed}})
+        created.add(post['id'])
+        if is_closed:
+            closed += 1
+        else:
+            added.append(post['title'])
+    core.set_setting('board_sync', settings | {'created': sorted(created)[-3000:], 'last': time.time(), 'error': ''})
+    return {'added': len(added), 'closed': closed, 'courses': made_courses, 'titles': added}
 
 
 def sync_quietly():
@@ -188,9 +235,9 @@ def sync_quietly():
 
 @router.get('')
 def board_status():
-    settings = core.setting('board_sync', {'enabled': True, 'imported': [], 'last': 0})
+    settings = core.setting('board_sync', {'enabled': True, 'last': 0})
     return {'available': enabled(), 'enabled': settings.get('enabled', True), 'last': settings.get('last', 0),
-            'imported': len(settings.get('imported', [])), 'error': settings.get('error', ''),
+            'imported': len(settings.get('created', [])), 'error': settings.get('error', ''),
             'url': base_url(), 'profile': accounts.college_profile()}
 
 

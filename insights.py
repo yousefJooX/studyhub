@@ -42,7 +42,8 @@ def weekly_report(weeks_ago=0):
     end_ts = start_ts + 7 * 86400
     prev_start, prev_end = start_ts - 7 * 86400, start_ts
     courses = {c['id']: c['title'] for c in core.rows('courses')}
-    tasks = core.rows('tasks')
+    # Assignments that were already closed when they came from the college board are not the student's work.
+    tasks = [t for t in core.rows('tasks') if not (t.get('board') or {}).get('closed')]
     sessions = focus_sessions()
 
     def minutes_between(a, b):
