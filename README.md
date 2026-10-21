@@ -9,11 +9,11 @@ It has two modes:
 
 ## Video walkthrough
 
-[![Watch the 3-minute StudyHub walkthrough](docs/walkthrough-thumb.jpg)](https://github.com/yousefJooX/studyhub/raw/main/docs/walkthrough.mp4)
+https://github.com/user-attachments/assets/26c5a38d-f465-41d8-87da-a19e826c9ecc
 
-This 3-minute walkthrough (1080p, English captions) covers everything a new user does: signing up, adding courses, the timetable, tasks and deadlines, the assistant, the focus timer, Obsidian notes, the weekly review, voice reminders, Claude and installing it on a phone.
+This 3-minute walkthrough (English captions) covers everything a new user does: signing up, adding courses, the timetable, tasks and deadlines, the assistant, the focus timer, Obsidian notes, the weekly review, voice reminders, Claude and installing it on a phone.
 
-Click the image to play [walkthrough.mp4](docs/walkthrough.mp4). There are also [English subtitles (.srt)](docs/walkthrough.en.srt) and a [written transcript](docs/walkthrough-transcript.md).
+You can also download [walkthrough.mp4](docs/walkthrough.mp4), and there are [English subtitles (.srt)](docs/walkthrough.en.srt) and a [written transcript](docs/walkthrough-transcript.md).
 
 ## Features
 
