@@ -177,7 +177,7 @@ class Login(BaseModel):
 def auth_status(request: Request):
     from . import accounts
     info = {'multiuser': accounts.enabled(), 'signup': accounts.signup_open(), 'invite': accounts.invite_required(),
-            'college_code': accounts.college_code_required(), 'college_name': accounts.COLLEGE_NAME}
+            'college_code': accounts.college_code_required(), 'college_name': accounts.COLLEGE_NAME, 'programs': accounts.PROGRAMS}
     try:
         authorized(request)
         user = accounts.CURRENT_USER.get()
@@ -577,7 +577,6 @@ def update_note(entry_id: str, body: Note):
     return save_entry('notes', body, entry_id)
 
 
-@app.delete('/api/{table}/{entry_id}', dependencies=[Depends(authorized)])
 def delete_entry(table: str, entry_id: str):
     if table not in ('tasks', 'slots', 'notes', 'uploads'):
         raise HTTPException(404)
@@ -590,6 +589,12 @@ def delete_entry(table: str, entry_id: str):
         with database() as db:
             db.execute('DELETE FROM reminder_deliveries WHERE task_id=?', (entry_id,))
     return {'ok': True}
+
+
+# Explicit routes (a catch-all /api/{table}/{id} would shadow DELETE /api/account/token, /api/vault/folder…)
+for _table in ('tasks', 'slots', 'notes', 'uploads'):
+    app.add_api_route(f'/api/{_table}/{{entry_id}}', (lambda t: lambda entry_id: delete_entry(t, entry_id))(_table),
+                      methods=['DELETE'], dependencies=[Depends(authorized)], name=f'delete_{_table}')
 
 
 MATH_INLINE = re.compile(r'(?<![\\$\w])\$(?![\s$])([^\n$]+?)(?<![\s\\])\$(?![\w$])')
@@ -947,7 +952,27 @@ def state():
             'available_folders': available, 'vault_count': len(files), 'vault_notes': sum(f['kind'] == 'note' for f in files),
             'vault_available': bool(files), 'timezone': 'Africa/Cairo', 'server_time': time.time(),
             'task_defaults': {'duration_minutes': setting('default_task_minutes', 25)},
-            'user': current_user_public(), 'archive': archive_access()}
+            'user': current_user_public(), 'archive': archive_access(), 'college': college_profile_public()}
+
+
+def college_profile_public():
+    from . import accounts
+    return accounts.college_profile()
+
+
+@app.put('/api/profile/college', dependencies=[Depends(authorized)])
+def update_college_profile(body: dict):
+    """Change your level/program (used for college tasks and later for the archive)."""
+    from . import accounts
+    level, program = accounts.clean_profile(body.get('level'), body.get('program'))
+    if accounts.enabled():
+        user = accounts.CURRENT_USER.get()
+        if not user.get('college'):
+            raise HTTPException(403, 'سجّل إنك من الكلية الأول بالكود')
+        accounts.set_college(user['id'], True, level, program)
+    else:
+        set_setting('college_profile', {'level': level, 'program': program})
+    return {'level': level, 'program': program}
 
 
 def archive_access():
@@ -968,7 +993,9 @@ def health():
 
 @app.get('/')
 def home():
-    return FileResponse(STATIC / 'index.html')
+    # Absolute link-preview image for WhatsApp/Telegram cards.
+    origin = html.escape(os.environ.get('STUDY_PUBLIC_ORIGIN', '').rstrip('/'), quote=True)
+    return HTMLResponse((STATIC / 'index.html').read_text(encoding='utf-8').replace('__ORIGIN__', origin))
 
 
 @app.get('/sw.js')

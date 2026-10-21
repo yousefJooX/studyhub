@@ -50,6 +50,16 @@ async function api(url, method='GET', data) {
   }
 }
 async function refresh(render=true) { S = await api('/api/state'); clockOffset=S.server_time*1000-Date.now(); if (render) await renderPage(); }
+const LEVELS = [[1,'الفرقة الأولى'],[2,'الفرقة الثانية'],[3,'الفرقة الثالثة'],[4,'الفرقة الرابعة']];
+function collegeFields(level='', program='') {
+  const programs = Object.entries(AUTH.programs || {});
+  return `<div class="field"><label for="su-level">سنتك</label><select id="su-level" name="level" data-college-select><option value="">اختار…</option>${LEVELS.map(([v,t])=>`<option value="${v}" ${String(level)===String(v)?'selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="field"><label for="su-program">البرنامج</label><select id="su-program" name="program"><option value="">عام / لسه مختارتش</option>${programs.map(([v,t])=>`<option value="${v}" ${program===v?'selected':''}>${E(t)}</option>`).join('')}</select></div>`;
+}
+function toggleCollegeFields(on) {
+  const box=document.querySelector('.college-fields'); if(!box) return;
+  box.hidden=!on; box.querySelectorAll('[data-college-select]').forEach(s=>s.required=on);
+}
 function loginView(mode='login') {
   S = {}; if (typeof Assistant !== 'undefined') Assistant.setVisible(false);
   const multi = AUTH.multiuser, signup = multi && AUTH.signup && mode === 'signup';
@@ -60,9 +70,11 @@ function loginView(mode='login') {
        <small class="muted">إنجليزي وأرقام بس، من ٣ حروف</small>
        <label for="su-pass">الباسورد</label><input id="su-pass" name="password" type="password" autocomplete="new-password" minlength="8" required>${AUTH.invite ? `
        <label for="su-code">كود الدعوة</label><input id="su-code" name="code" dir="ltr" autocomplete="off" required>` : ''}
-       <label class="checkbox-option college-check"><input type="checkbox" name="college" value="1" data-college-check> أنا طالب في ${E(AUTH.college_name || 'الكلية')}</label>
-       ${AUTH.college_code ? `<div class="college-code" hidden><label for="su-college">كود الكلية</label><input id="su-college" name="college_code" dir="ltr" autocomplete="off"><small class="muted">بتلاقيه في جروب الدفعة</small></div>` : ''}
-       <small class="muted">أرشيف الكلية (ملفات المواد والمحاضرات) بيظهر لطلاب الكلية بس.</small>`
+       <div class="college-box">${AUTH.college_code
+         ? `<label for="su-college">كود الكلية · لو انت من الكلية</label><input id="su-college" name="college_code" dir="ltr" autocomplete="off" data-college-code-input>`
+         : `<label class="checkbox-option"><input type="checkbox" name="college" value="1" data-college-check> أنا من ${E(AUTH.college_name || 'الكلية')}</label>`}
+         <div class="college-fields" hidden>${collegeFields()}</div>
+         <small class="muted">الكود بيفتحلك أرشيف الكلية وتاسكات الكلية حسب سنتك. من غيره الموقع شغال عادي.</small></div>`
     : `${multi ? `<label for="username">اسم المستخدم</label><input id="username" name="username" dir="ltr" autocomplete="username" required autofocus>` : ''}
        <label for="password">كلمة المرور</label><input id="password" name="password" type="password" autocomplete="current-password" required ${multi ? '' : 'autofocus'}>`;
   $('#app').innerHTML = `<div class="login-page"><section class="login-art"><img src="/static/icon.svg" alt=""><div class="label">YOUR STUDY SPACE</div><h1>كل اللي بتتعلّمه.<br>في مساحتك.</h1><p>مواد الكلية، نوتس Obsidian، والكورسات اللي بتختارها بنفسك. خطة واحدة، من أي جهاز.</p></section><section class="login-form"><form id="${signup ? 'signup-form' : 'login-form'}"><h2>${signup ? 'اعمل حسابك' : 'أهلًا بيك'}</h2><p>${signup ? 'مساحة دراسية خاصة بيك، محدش يشوفها غيرك.' : 'ادخل لمساحتك الدراسية.'}</p>${fields}<button class="button" type="submit">${signup ? 'اعمل الحساب' : 'دخول لمساحتي'} ${I('arrow')}</button><div id="login-error" class="error" role="alert"></div>${switcher}<p class="small muted">بياناتك محفوظة على السيرفر.</p></form></section></div>`;
@@ -324,7 +336,7 @@ function settingsView() {
   return heading('مساحتك، بطريقتك.','مصادر المحتوى والتثبيت على أجهزتك.')+
     `${AUTH.multiuser?'':`<section class="settings-block"><h2>الفولدرات المربوطة من Obsidian</h2><p>الموقع يعرض ملفات الفولدرات دي من نسخة الـVault المتاحة للسيرفر. ملفات Obsidian الأصلية للقراءة، والنوتس الجديدة هنا بتتحفظ في الموقع.</p>${S.mounts.map(m=>`<div class="mount"><b>${E(m)}</b><span class="tag">${S.vault_available?'مضاف':'في انتظار الملفات'}</span></div>`).join('')}<form id="mount-form" class="form-inline"><select name="folder" aria-label="فولدر Obsidian جديد" required><option value="">اختار فولدر من نسخة السيرفر</option>${S.available_folders.filter(f=>!S.mounts.includes(f)).map(f=>`<option>${E(f)}</option>`).join('')}</select><button class="button secondary" type="submit">إضافة فولدر</button></form><p class="small">إضافة فولدر هنا بتسمح بعرضه. وصول تعديلاته من جهاز Obsidian للسيرفر يحتاج مزامنة الملفات بين الجهازين.</p></section>`}`+(AUTH.multiuser?vaultUploadView()+accountView():'')+
     `<section class="settings-block"><h2>الموقع كتطبيق</h2><p>من Chrome أو Edge اختار تثبيت التطبيق. على iPhone افتح قائمة المشاركة واختار «إضافة إلى الشاشة الرئيسية». التثبيت على التليفون يحتاج رابط HTTPS.</p>${act('install',I('download')+' تثبيت مساحتي')}<p class="small">النسخة الحالية تحتاج الاتصال بالسيرفر لقراءة المحتوى وحفظ التغييرات. ملفاتك تقدر تنزّلها على جهازك.</p></section>`+
-    notificationsView()+voicesView()+`<section class="settings-block"><h2>حفظ البيانات والتحديثات</h2><p>المهام والجداول والنوتس والملفات المرفوعة محفوظة على السيرفر. فتح التطبيق من جهاز آخر بنفس كلمة المرور يعرض نفس البيانات. كل المواعيد بتوقيت القاهرة.</p>${act('refresh',I('refresh')+' تحديث البيانات','button secondary')} ${act('logout','تسجيل الخروج','button secondary')}</section>`;
+    aiKeyView()+collegeProfileView()+notificationsView()+voicesView()+`<section class="settings-block"><h2>حفظ البيانات والتحديثات</h2><p>المهام والجداول والنوتس والملفات المرفوعة محفوظة على السيرفر. فتح التطبيق من جهاز آخر بنفس كلمة المرور يعرض نفس البيانات. كل المواعيد بتوقيت القاهرة.</p>${act('refresh',I('refresh')+' تحديث البيانات','button secondary')} ${act('logout','تسجيل الخروج','button secondary')}</section>`;
 }
 function notificationsView() {
   const permission='Notification'in window?Notification.permission:'unsupported';
@@ -374,7 +386,7 @@ function updateTimerDisplays() {
     }
   }
   const running=S.tasks.find(t=>t.timer?.state==='running'&&timerSeconds(t)>0&&t.status!=='done');
-  document.title=running?clockText(timerSeconds(running))+' • '+running.title+' — مساحتي':'مساحتي — StudyHub';
+  document.title=running?clockText(timerSeconds(running))+' • '+running.title+' — StudyHub':'مساحتك الدراسية — StudyHub';
 }
 async function openTask(id) {
   await refresh(false);const task=S.tasks.find(t=>t.id===id);if(!task)return;
@@ -405,7 +417,7 @@ async function navigate(p) {
   if (page==='archive') archive=await api('/api/archive');
   if (page==='weekly') {weekOffset=0;weekly=await api('/api/weekly');}
   if (page==='day') planDay=todayDate();
-  if (page==='settings') {await syncPushState();voices=await api('/api/voices').catch(()=>null);newToken=null;if(AUTH.multiuser)account=await api('/api/account').catch(()=>null);}
+  if (page==='settings') {aiKey=await api('/api/assistant/key').catch(()=>null);await syncPushState();voices=await api('/api/voices').catch(()=>null);newToken=null;if(AUTH.multiuser)account=await api('/api/account').catch(()=>null);}
   await renderPage(); window.scrollTo(0,0);
 }
 function courseOptions(value='', blank='بدون مادة') { return `<option value="">${blank}</option>`+S.courses.map(c=>`<option value="${E(c.id)}" ${value===c.id?'selected':''}>${E(c.title)}</option>`).join(''); }
@@ -477,7 +489,9 @@ document.addEventListener('click',async event=>{
     if(b.dataset.folder!==undefined) {folderFilter=b.dataset.folder;folderFilter.split('/').forEach((_,i,a)=>openFolders.add(a.slice(0,i+1).join('/')));saveOpenFolders();filePage=0;kind='all';await keepTreeScroll(renderPage);if(innerWidth<=720)document.querySelector('.library-main')?.scrollIntoView({block:'start'});return;}
     if(b.dataset.week!==undefined) {weekOffset=Number(b.dataset.week);b.disabled=true;weekly=await api('/api/weekly?weeks_ago='+weekOffset);return await renderPage();}
     if(b.dataset.layout) {libraryLayout=b.dataset.layout;try{localStorage.setItem('library-layout',libraryLayout);}catch{}return await renderPage();}
-    if(b.dataset.page) return await navigate(b.dataset.page);
+    if(b.dataset.page) {const target=b.dataset.scroll; if(target)Assistant.close(); await navigate(b.dataset.page); if(target)document.getElementById(target)?.scrollIntoView({behavior:'smooth',block:'start'}); return;}
+    if(b.dataset.action==='assistant-open-now') return Assistant.open();
+    if(b.dataset.action==='delete-ai-key') {b.disabled=true;await api('/api/assistant/key','DELETE');aiKey=await api('/api/assistant/key');Assistant.reset();toast('اتمسح الـ key');return await renderPage();}
     if(b.dataset.course) {activeCourse=b.dataset.course;page='course';return await renderPage();}
     if(b.dataset.kind) {kind=b.dataset.kind;filePage=0;return await renderPage();}
     if(b.dataset.status) {status=b.dataset.status;return await renderPage();}
@@ -569,9 +583,7 @@ document.addEventListener('click',async event=>{
 document.addEventListener('change',async event=>{
   const el=event.target;
   try {
-    if(el.dataset.collegeCheck!==undefined){
-      const box=document.querySelector('.college-code'); if(box){box.hidden=!el.checked; box.querySelector('input').required=el.checked;} return;
-    }
+    if(el.dataset.collegeCheck!==undefined){toggleCollegeFields(el.checked);return;}
     if(el.dataset.toggleTask){
       const task=S.tasks.find(t=>t.id===el.dataset.toggleTask);el.disabled=true;
       try{await api(`/api/tasks/${task.id}`,'PUT',{...task,status:el.checked?'done':'todo'});await refresh();}
@@ -624,12 +636,15 @@ document.addEventListener('submit',async event=>{
       await api('/api/tasks','POST',{title:data.title,planned_date:planDay});
     }else if(form.id==='mount-form')await api('/api/vault/mounts','POST',data);
     else if(form.id==='import-form')await api('/api/archive/import','POST',data);
+    else if(form.id==='ai-key-form'){const r=await api('/api/assistant/key','POST',data);aiKey=await api('/api/assistant/key');Assistant.reset();await renderPage();toast('الـ key شغال ✓ المساعد جاهز ('+r.model+')');return;}
+    else if(form.id==='profile-form'){data.level=Number(data.level);await api('/api/profile/college','PUT',data);await refresh();toast('اتحفظت سنتك');return;}
     else if(form.id==='college-form'){await api('/api/account/college','POST',data);account=await api('/api/account');await refresh();toast('أرشيف الكلية اتفعّل عندك');return;}
     else return;
     if($('#modal').open)$('#modal').close();await refresh();toast('اتحفظت على سيرفرك');
   }catch(error){const el=form.querySelector('.error');if(el)el.textContent=error.message;else toast(error.message);}
   finally{button.disabled=false;}
 });
+document.addEventListener('input',event=>{if(event.target.dataset?.collegeCodeInput!==undefined)toggleCollegeFields(!!event.target.value.trim());});
 window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();installPrompt=event;});
 window.addEventListener('online',()=>{if($('#app .connection-error'))return boot();if(S.tasks){toast('الاتصال رجع');refresh().catch(()=>toast('لسه مش قادر أوصل للسيرفر'));}});
 window.addEventListener('offline',()=>toast('الاتصال مقطوع؛ البيانات تحتاج الوصول للسيرفر'));
@@ -679,7 +694,9 @@ const Assistant = (() => {
     const items = messages.map(m => m.role === 'user'
       ? `<div class="as-msg user" dir="auto">${format(m.content)}</div>`
       : `<div class="as-msg bot"><div dir="auto">${format(m.content)}</div>${(m.actions||[]).length ? `<ul class="as-actions">${m.actions.map(a => `<li><span class="as-tick" aria-hidden="true"></span><span><b>${E(a.label)}</b> <span dir="auto">${E(a.title)}</span>${a.detail ? `<small dir="auto">${E(a.detail)}</small>` : ''}</span></li>`).join('')}</ul>` : ''}</div>`).join('');
-    const empty = `<div class="as-empty"><p>اكتبلي اللي عندك بالعربي أو English، وأنا أضيفه للمهام والجدول، أو أدوّرلك في نوتسك.</p>${suggestions.map(s => `<button type="button" class="as-suggest" data-assistant-suggest="${E(s)}">${E(s)}</button>`).join('')}</div>`;
+    const empty = status && !status.configured
+      ? `<div class="as-empty"><p><b>المساعد محتاج API key.</b> هات key مجاني من Groq في دقيقتين وحطه في الإعدادات.</p><button type="button" class="button" data-page="settings" data-scroll="ai-key">حط الـ key بتاعك</button></div>`
+      : `<div class="as-empty"><p>اكتبلي اللي عندك بالعربي أو English، وأنا أضيفه للمهام والجدول، أو أدوّرلك في نوتسك.</p>${suggestions.map(s => `<button type="button" class="as-suggest" data-assistant-suggest="${E(s)}">${E(s)}</button>`).join('')}</div>`;
     log().innerHTML = (messages.length ? items : empty) + (busy ? '<div class="as-msg bot as-typing" aria-label="بيكتب"><span></span><span></span><span></span></div>' : '');
     log().scrollTop = log().scrollHeight;
   }
@@ -701,7 +718,7 @@ const Assistant = (() => {
       messages.push({role:'assistant', content: error.message || 'حصلت مشكلة، جرّب تاني.'});
     } finally { busy = false; render(); save(); }
   }
-  function open() { const p = panel(); if (!p) return; p.hidden = false; document.body.classList.add('assistant-open'); render(); loadStatus(); setTimeout(() => $('#assistant-form textarea')?.focus(), 50); }
+  async function open() { const p = panel(); if (!p) return; p.hidden = false; document.body.classList.add('assistant-open'); await loadStatus(); render(); setTimeout(() => $('#assistant-form textarea')?.focus(), 50); }
   function close() { const p = panel(); if (p) p.hidden = true; document.body.classList.remove('assistant-open'); $('#assistant-fab')?.focus(); }
   function setVisible(on) { const f = $('#assistant-fab'); if (f) f.hidden = !on; if (!on) close(); }
   document.addEventListener('click', event => {
@@ -719,8 +736,9 @@ const Assistant = (() => {
     if (event.target.matches?.('#assistant-form textarea') && event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); event.target.form.requestSubmit(); }
     if (event.key === 'Escape' && !panel()?.hidden) close();
   });
-  async function refreshVisibility() { const st = await loadStatus(); setVisible(!!st.configured); }
-  return {setVisible, open, refreshVisibility};
+  async function refreshVisibility() { await loadStatus(); setVisible(true); }
+  function reset() { status = null; loadStatus(); }
+  return {setVisible, open, refreshVisibility, reset, close};
 })();
 
 /* ---------- deadline voice reminders ---------- */
@@ -823,8 +841,8 @@ function accountView() {
     <div class="quota"><div class="quota-bar"><span style="width:${pct}%"></span></div><small>${used} من ${quota} ميجا مستخدمين</small></div>
     <h3>أرشيف الكلية</h3>
     ${account.user.college ? `<p>✓ حسابك متسجّل كطالب في ${E(AUTH.college_name || 'الكلية')}، وأرشيف الكلية ظاهر عندك.</p>`
-      : `<p>أرشيف الكلية لطلاب ${E(AUTH.college_name || 'الكلية')} بس.${AUTH.college_code ? ' لو انت منهم، اكتب كود الكلية اللي في جروب الدفعة.' : ' لو انت منهم، فعّله من هنا.'}</p>
-         <form id="college-form" class="form-inline">${AUTH.college_code ? '<label class="sr-only" for="college-code">كود الكلية</label><input id="college-code" name="code" dir="ltr" placeholder="كود الكلية" required>' : ''}<button type="submit" class="button secondary">أنا من الكلية</button></form>`}
+      : `<p>أرشيف الكلية وتاسكات الكلية لطلاب ${E(AUTH.college_name || 'الكلية')} بس.${AUTH.college_code ? ' لو انت منهم، اكتب كود الكلية اللي في جروب الدفعة واختار سنتك.' : ' لو انت منهم، اختار سنتك وفعّله من هنا.'}</p>
+         <form id="college-form" class="form-grid college-join">${AUTH.college_code ? '<label for="college-code">كود الكلية</label><input id="college-code" name="code" dir="ltr" required>' : ''}${collegeFields().replace('data-college-select','required')}<button type="submit" class="button secondary">أنا من الكلية</button></form>`}
     <h3>وصّل Claude بمساحتك (MCP)</h3>
     <p>اعمل token، وحط الرابط في Claude ← Settings ← Connectors ← Add custom connector. Claude هيقدر يقرا ويضيف مهامك ومواعيدك ونوتسك.</p>
     ${newToken ? `<div class="token-box"><label for="token-url">رابط الـ connector (بيظهر مرة واحدة بس)</label><div class="token-row"><input id="token-url" readonly dir="ltr" value="${E(newToken.connector_url)}"><button type="button" class="button" data-copy-token>نسخ</button></div><p class="small">متبعتش الرابط ده لحد، هو زي الباسورد.</p></div>` : ''}
@@ -832,6 +850,37 @@ function accountView() {
     <h3>تغيير الباسورد</h3>
     <form id="password-form" class="form-inline"><label class="sr-only" for="pw-old">الباسورد الحالي</label><input id="pw-old" name="old" type="password" autocomplete="current-password" placeholder="الباسورد الحالي" required><label class="sr-only" for="pw-new">الباسورد الجديد</label><input id="pw-new" name="new" type="password" autocomplete="new-password" minlength="8" placeholder="الباسورد الجديد (٨ حروف+)" required><button class="button secondary" type="submit">غيّر الباسورد</button></form>
   </section>`;
+}
+let aiKey = null;
+function aiKeyView() {
+  if (!aiKey) return '';
+  const p = aiKey.providers || {}, groq = p.groq || {};
+  const current = aiKey.set ? `<div class="notice">✓ المساعد شغال بالـ key بتاعك: <b>${E(p[aiKey.provider]?.name || aiKey.provider)}</b> · <span dir="ltr">${E(aiKey.model)}</span> · <span dir="ltr">••••${E(aiKey.last4)}</span></div>
+    <div class="toolbar">${act('assistant-open-now','جرّب المساعد','button')}${act('delete-ai-key','امسح الـ key','button ghost')}</div>` : '';
+  return `<section class="settings-block ai-key" id="ai-key"><h2>المساعد الذكي: الـ API key بتاعك</h2>
+    <p>المساعد بيضيفلك مهام ومواعيد من رسالة واحدة، وبيدوّر في نوتسك. عشان يشتغل محتاج API key مجاني من مزوّد AI. كل واحد بيحط الـ key بتاعه، فمحدش بيستهلك حدود التاني والمساعد بيفضل سريع لما ناس كتير تستخدمه في نفس الوقت.</p>
+    ${current}
+    <details class="ai-guide" ${aiKey.set ? '' : 'open'}><summary>إزاي تجيب key مجاني من Groq (دقيقتين)</summary>
+      <ol>
+        <li>افتح <a href="${E(groq.keys_url || 'https://console.groq.com/keys')}" target="_blank" rel="noopener noreferrer" dir="ltr">console.groq.com/keys</a> وسجّل دخول بحساب Google. مجاني ومش محتاج فيزا.</li>
+        <li>دوس <b>Create API Key</b>، اكتب أي اسم (مثلاً <span dir="ltr">StudyHub</span>)، وبعدين <b>Submit</b>.</li>
+        <li>انسخ الـ key. بيبدأ بـ <code dir="ltr">gsk_</code> وبيظهر <b>مرة واحدة بس</b>، فانسخه على طول.</li>
+        <li>ارجع هنا، اختار <b>Groq</b>، الصق الـ key، ودوس <b>حفظ وتجربة</b>.</li>
+      </ol>
+      <p class="small">الـ key بيتحفظ <b>مشفّر</b> على السيرفر، ومحدش يقدر يشوفه ولا حتى صاحب الموقع من الواجهة. متبعتهوش لحد ولا تحطه في شات، وتقدر تمسحه أو تعمل واحد جديد من Groq في أي وقت.</p>
+    </details>
+    <form id="ai-key-form" class="form-grid college-join">
+      <div class="field"><label for="ai-provider">المزوّد</label><select id="ai-provider" name="provider">${Object.entries(p).map(([k,v])=>`<option value="${k}" ${(aiKey.provider||'groq')===k?'selected':''}>${E(v.name)}${k==='groq'?' (الأسهل)':''}</option>`).join('')}</select></div>
+      <div class="field"><label for="ai-key-input">الـ API key</label><input id="ai-key-input" name="key" type="password" dir="ltr" autocomplete="off" spellcheck="false" placeholder="gsk_..." required></div>
+      <button type="submit" class="button">حفظ وتجربة</button><div class="error field full" role="alert"></div>
+    </form></section>`;
+}
+function collegeProfileView() {
+  if (!S.college?.college) return '';
+  const c=S.college;
+  return `<section class="settings-block"><h2>سنتك في الكلية</h2>
+    <p>على أساسها بتوصلك تاسكات الكلية من قناة الدفعة، وبعدين أرشيف سنتك.</p>
+    <form id="profile-form" class="form-grid college-join">${collegeFields(c.level||'', c.program||'').replace('data-college-select','required')}<button type="submit" class="button secondary">حفظ</button></form></section>`;
 }
 function vaultUploadView() {
   return `<section class="settings-block"><h2>فولدرات Obsidian بتاعتك</h2>

@@ -172,8 +172,9 @@ def join_college(body: dict):
     accounts.throttle('college:' + user['id'], 10, 3600)
     if not accounts.college_code_ok(body.get('code', '')):
         raise HTTPException(403, 'كود الكلية غلط. اطلبه من جروب الدفعة')
-    accounts.set_college(user['id'], True)
-    return {'ok': True, 'college': True}
+    level, program = accounts.clean_profile(body.get('level'), body.get('program'))
+    accounts.set_college(user['id'], True, level, program)
+    return {'ok': True, 'college': True, 'level': level, 'program': program}
 
 
 @account.post('/password')

@@ -41,9 +41,38 @@ def settings():
             os.environ.get('STUDY_LLM_MODEL', DEFAULT_MODEL))
 
 
+# Providers a user can pick for their own key (Settings → المساعد).
+USER_PROVIDERS = {
+    'groq': {'name': 'Groq', 'base': 'https://api.groq.com/openai/v1', 'model': 'openai/gpt-oss-120b',
+             'keys_url': 'https://console.groq.com/keys', 'prefix': 'gsk_'},
+    'gemini': {'name': 'Google Gemini', 'base': 'https://generativelanguage.googleapis.com/v1beta/openai',
+               'model': 'gemini-3.8-flash', 'keys_url': 'https://aistudio.google.com/apikey', 'prefix': 'AIza'},
+    'openrouter': {'name': 'OpenRouter', 'base': 'https://openrouter.ai/api/v1', 'model': 'openai/gpt-oss-120b:free',
+                   'keys_url': 'https://openrouter.ai/keys', 'prefix': 'sk-or-'},
+}
+
+
+def provider_base(provider):
+    # STUDY_PROVIDER_BASE_<NAME> overrides a provider's address (tests, self-hosted gateways).
+    return os.environ.get('STUDY_PROVIDER_BASE_' + provider.upper(), USER_PROVIDERS[provider]['base']).rstrip('/')
+
+
+def own_key():
+    """(provider, base, key, model) of the current user's own API key, or None."""
+    from .keystore import unseal
+    saved = core.setting('own_llm', {})
+    if saved.get('provider') not in USER_PROVIDERS or not saved.get('key'):
+        return None
+    key = unseal(saved['key'])
+    return (saved['provider'], provider_base(saved['provider']), key, saved.get('model') or USER_PROVIDERS[saved['provider']]['model']) if key else None
+
+
 def providers():
-    """Primary model, then an optional fallback used when the first is rate-limited or down."""
+    """The user's own key first (if they added one), then the site's model and its optional fallback."""
     found = []
+    mine = own_key()
+    if mine:
+        found.append(mine[1:])
     for prefix in ('STUDY_LLM', 'STUDY_LLM_FALLBACK'):
         base = os.environ.get(prefix + '_BASE_URL', DEFAULT_BASE if prefix == 'STUDY_LLM' else '').rstrip('/')
         key = os.environ.get(prefix + '_API_KEY', '')
@@ -167,7 +196,7 @@ def describe(name, args, outcome):
 @router.post('/api/assistant', dependencies=[Depends(core.authorized)])
 def assistant(body: ChatRequest):
     from . import accounts
-    if accounts.enabled():  # shared key: keep each user to a daily budget
+    if accounts.enabled() and not own_key():  # shared key: keep each user to a daily budget
         cap = int(os.environ.get('STUDY_ASSISTANT_DAILY', '40'))
         today = datetime.now(CAIRO).date().isoformat()
         usage = core.setting('assistant_usage', {})
@@ -199,5 +228,56 @@ def assistant(body: ChatRequest):
 @router.get('/api/assistant/status', dependencies=[Depends(core.authorized)])
 def assistant_status():
     options = providers()
+    mine = own_key()
     return {'configured': bool(options), 'model': options[0][2] if options else '',
-            'fallback': options[1][2] if len(options) > 1 else ''}
+            'fallback': options[1][2] if len(options) > 1 else '', 'own': bool(mine)}
+
+
+class OwnKey(BaseModel):
+    provider: str = Field(pattern='^(groq|gemini|openrouter)$')
+    key: str = Field(min_length=10, max_length=300)
+
+
+def list_models(base, key):
+    request = urllib.request.Request(base + '/models', headers={'Authorization': 'Bearer ' + key, 'User-Agent': 'StudyHub/1.0'})
+    with urllib.request.urlopen(request, timeout=20) as response:
+        data = json.loads(response.read())
+    return [m.get('id', '') for m in data.get('data', []) if m.get('id')]
+
+
+@router.get('/api/assistant/key', dependencies=[Depends(core.authorized)])
+def get_own_key():
+    saved = core.setting('own_llm', {})
+    return {'set': bool(own_key()), 'provider': saved.get('provider', ''), 'model': saved.get('model', ''),
+            'last4': saved.get('last4', ''), 'providers': {k: {'name': v['name'], 'keys_url': v['keys_url'], 'prefix': v['prefix']}
+                                                           for k, v in USER_PROVIDERS.items()}}
+
+
+@router.post('/api/assistant/key', dependencies=[Depends(core.authorized)])
+def set_own_key(body: OwnKey):
+    """Save the user's own API key (encrypted) after checking it really works."""
+    from . import accounts
+    from .keystore import seal
+    user = accounts.CURRENT_USER.get()
+    accounts.throttle('llm-key:' + (user['id'] if user else 'owner'), 10, 3600)
+    key = body.key.strip()
+    if any(c.isspace() for c in key):
+        raise HTTPException(400, 'الـ key فيه مسافات. انسخه تاني من غير مسافات')
+    info = USER_PROVIDERS[body.provider]
+    try:
+        models = list_models(provider_base(body.provider), key)
+    except urllib.error.HTTPError as error:
+        if error.code in (401, 403):
+            raise HTTPException(400, f'الـ key ده مش شغال مع {info["name"]}. اتأكد إنك نسخته كله وإنك اخترت المزوّد الصح')
+        raise HTTPException(502, f'{info["name"]} مردّش دلوقتي ({error.code}). جرّب كمان شوية')
+    except (urllib.error.URLError, TimeoutError, ValueError):
+        raise HTTPException(502, f'مش قادر أوصل لـ {info["name"]} من السيرفر دلوقتي')
+    model = info['model'] if info['model'] in models else next((m for m in models if 'gpt-oss-120b' in m), models[0] if models else info['model'])
+    core.set_setting('own_llm', {'provider': body.provider, 'key': seal(key), 'model': model, 'last4': key[-4:]})
+    return {'ok': True, 'provider': body.provider, 'model': model, 'last4': key[-4:]}
+
+
+@router.delete('/api/assistant/key', dependencies=[Depends(core.authorized)])
+def delete_own_key():
+    core.set_setting('own_llm', {})
+    return {'ok': True}

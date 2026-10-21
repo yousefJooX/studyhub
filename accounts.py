@@ -56,8 +56,13 @@ def accounts_db():
             CREATE TABLE IF NOT EXISTS api_tokens(token TEXT PRIMARY KEY, user_id TEXT NOT NULL, created REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS attempts(key TEXT PRIMARY KEY, started REAL NOT NULL, count INTEGER NOT NULL);
             ''')
-            if 'college' not in {r[1] for r in db.execute('PRAGMA table_info(users)')}:
+            columns = {r[1] for r in db.execute('PRAGMA table_info(users)')}
+            if 'college' not in columns:
                 db.execute('ALTER TABLE users ADD COLUMN college INTEGER NOT NULL DEFAULT 0')
+            if 'level' not in columns:
+                db.execute('ALTER TABLE users ADD COLUMN level INTEGER')
+            if 'program' not in columns:
+                db.execute("ALTER TABLE users ADD COLUMN program TEXT NOT NULL DEFAULT ''")
             yield db
     finally:
         db.close()
@@ -82,10 +87,25 @@ def check_password(password, encoded):
 
 
 def public(row):
-    return {'id': row['id'], 'username': row['username'], 'name': row['name'], 'college': bool(row['college'])}
+    return {'id': row['id'], 'username': row['username'], 'name': row['name'], 'college': bool(row['college']),
+            'level': row['level'], 'program': row['program'] or ''}
 
 
-COLLEGE_NAME = 'كلية الحاسبات والمعلومات – جامعة حلوان'
+COLLEGE_NAME = os.environ.get('STUDY_COLLEGE_NAME', 'كلية علوم الحاسب وتكنولوجيا المعلومات – جامعة حلوان الأهلية')
+PROGRAMS = {'ds': 'Data Science (DS)', 'mse': 'Multimedia Software (MSE)', 'rse': 'Robotics Software (RSE)'}
+
+
+def clean_profile(level, program):
+    try:
+        level = int(level)
+    except (TypeError, ValueError):
+        raise HTTPException(400, 'اختار سنتك (الفرقة) من ١ لـ ٤')
+    if level not in (1, 2, 3, 4):
+        raise HTTPException(400, 'اختار سنتك (الفرقة) من ١ لـ ٤')
+    program = str(program or '').strip().lower()
+    if program and program not in PROGRAMS:
+        raise HTTPException(400, 'البرنامج مش معروف')
+    return level, program
 
 
 def college_code_required():
@@ -111,9 +131,20 @@ def require_archive():
         raise HTTPException(403, 'أرشيف الكلية متاح لطلاب ' + COLLEGE_NAME + ' بس')
 
 
-def set_college(user_id, value):
+def set_college(user_id, value, level=None, program=''):
     with accounts_db() as db:
-        db.execute('UPDATE users SET college=? WHERE id=?', (1 if value else 0, user_id))
+        db.execute('UPDATE users SET college=?, level=?, program=? WHERE id=?',
+                   (1 if value else 0, level if value else None, program if value else '', user_id))
+
+
+def college_profile():
+    """{'college', 'level', 'program'} for the current user (or the owner of the single-user site)."""
+    if not enabled():
+        from .app import setting
+        saved = setting('college_profile', {})
+        return {'college': True, 'level': saved.get('level'), 'program': saved.get('program', '')}
+    user = CURRENT_USER.get() or {}
+    return {'college': bool(user.get('college')), 'level': user.get('level'), 'program': user.get('program') or ''}
 
 
 def user_by(column, value):
@@ -190,6 +221,8 @@ class Signup(BaseModel):
     code: str = Field(default='', max_length=200)
     college: bool = False
     college_code: str = Field(default='', max_length=200)
+    level: int | None = None
+    program: str = Field(default='', max_length=10)
 
 
 class AccountLogin(BaseModel):
@@ -213,8 +246,10 @@ def signup(body: Signup, request: Request, response: Response):
     throttle('signup:all', 30, 3600)  # also cap total sign-ups per hour, whatever the address
     if invite_required() and not hmac.compare_digest(body.code.strip().encode(), os.environ['STUDY_SIGNUP_CODE'].encode()):
         raise HTTPException(403, 'كود الدعوة غلط. اطلبه من صاحب الموقع')
-    if body.college and not college_code_ok(body.college_code):
-        raise HTTPException(403, 'كود الكلية غلط. اطلبه من جروب الدفعة، أو شيل علامة «أنا من الكلية»')
+    college = body.college or bool(body.college_code.strip())
+    if college and not college_code_ok(body.college_code):
+        raise HTTPException(403, 'كود الكلية غلط. اطلبه من جروب الدفعة، أو سيب الخانة فاضية')
+    level, program = clean_profile(body.level, body.program) if college else (None, '')
     username = body.username.strip().lower()
     if not USERNAME.fullmatch(username):
         raise HTTPException(400, 'اسم المستخدم من ٣ لـ ٣٢ حرف إنجليزي صغير أو أرقام أو . _ -')
@@ -227,11 +262,12 @@ def signup(body: Signup, request: Request, response: Response):
             raise HTTPException(403, 'الموقع وصل للعدد الأقصى من الحسابات')
         if db.execute('SELECT 1 FROM users WHERE username=?', (username,)).fetchone():
             raise HTTPException(409, 'اسم المستخدم ده محجوز، جرّب اسم تاني')
-        db.execute('INSERT INTO users(id,username,name,password,created,college) VALUES (?,?,?,?,?,?)',
-                   (user_id, username, body.name.strip(), hash_password(body.password), time.time(), 1 if body.college else 0))
+        db.execute('INSERT INTO users(id,username,name,password,created,college,level,program) VALUES (?,?,?,?,?,?,?,?)',
+                   (user_id, username, body.name.strip(), hash_password(body.password), time.time(), 1 if college else 0, level, program))
     user_root(user_id)
     start_session(response, user_id)
-    return {'authenticated': True, 'user': {'id': user_id, 'username': username, 'name': body.name.strip(), 'college': body.college}}
+    return {'authenticated': True, 'user': {'id': user_id, 'username': username, 'name': body.name.strip(),
+                                            'college': college, 'level': level, 'program': program}}
 
 
 def login(body: AccountLogin, request: Request, response: Response):
