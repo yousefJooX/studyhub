@@ -30,7 +30,8 @@ You can also download [walkthrough.mp4](docs/walkthrough.mp4), and there are [En
   - Code highlighting, a table of contents and a reading-progress bar.
   - A collapsible folder tree.
 - **Deadline voice reminders:** Web Push reminders at 1 day, 12 hours and 1 hour before a deadline. Each stage plays a random clip from a folder of your own recorded voice notes.
-- **In-app assistant (optional):** chat with any OpenAI-compatible model (Groq, Gemini, OpenRouter, Ollama…) that can create tasks, courses, timetable slots and notes for you. A fallback provider takes over when the main one is rate-limited.
+- **College tasks from the class channels:** for students of the faculty, every assignment posted on the HNU FCSIT WhatsApp channels for their level and program is added to their tasks with its deadline and course. The data comes from [HNU Board](https://github.com/moustafasayed068/hnu-board) by Moustafa Sayed.
+- **In-app assistant (optional):** chat with any OpenAI-compatible model (Groq, Gemini, OpenRouter, Ollama…) that can create tasks, courses, timetable slots and notes for you. Each user can add their own free Groq, Gemini or OpenRouter key in Settings, with step-by-step instructions. The key is checked with the provider and stored encrypted. The site's own key, if set, is a capped fallback. A fallback provider takes over when the main one is rate-limited.
 - **MCP server:** connect Claude (with your own subscription) as a custom connector. It gets 13 tools: today, tasks, courses, schedule, notes search/read/create, files and the weekly review. See [MCP.md](MCP.md).
 - **Friends mode:**
   - Accounts: open sign-up and per-user data folders.
@@ -99,6 +100,9 @@ Settings live in `config.json` (path from `STUDY_CONFIG_FILE`, mode 600) or in e
 | `STUDY_USER_QUOTA_MB` | Friends-mode storage limit per user |
 | `STUDY_ASSISTANT_DAILY` | Friends-mode assistant messages per user per day |
 | `STUDY_SIGNUP_CODE` | Friends-mode invite code; when set, sign-up needs it |
+| `STUDY_COLLEGE_CODE` | Faculty code (e.g. `cs`) that unlocks the college archive and college tasks; students also pick their level and program |
+| `STUDY_COLLEGE_NAME` | Name of the faculty shown in the app |
+| `STUDY_BOARD_URL`, `STUDY_BOARD_SYNC` | HNU Board address for college tasks; set `STUDY_BOARD_SYNC=0` to turn it off |
 | `STUDY_MIN_FREE_MB` | Friends-mode uploads stop below this much free disk (default 2048) |
 
 ## Deploy to a home server
@@ -134,6 +138,11 @@ Found a security problem? Please open a private security advisory on GitHub inst
 ## Never commit
 
 `data/`, `config.json`, `deploy/deploy.env`, SQLite files and tokens are all git-ignored. Treat the MCP connector URL like a password.
+
+## Contributors
+
+- [Yousef (yousefJooX)](https://github.com/yousefJooX): StudyHub.
+- [Moustafa Sayed (moustafasayed068)](https://github.com/moustafasayed068): [HNU Board](https://github.com/moustafasayed068/hnu-board), which collects the faculty's channel posts by level and program. StudyHub's college tasks come from it, and the idea came from it.
 
 ## License
 

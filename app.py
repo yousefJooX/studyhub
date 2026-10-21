@@ -1026,6 +1026,8 @@ app.include_router(voices_router)
 from .vault_upload import router as vault_upload_router, account as account_router  # noqa: E402  (multi-user site)
 app.include_router(vault_upload_router)
 app.include_router(account_router)
+from .board import router as board_router  # noqa: E402
+app.include_router(board_router)
 
 
 @app.get('/api/weekly', dependencies=[Depends(authorized)])

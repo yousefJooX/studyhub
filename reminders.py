@@ -237,6 +237,7 @@ def run_once(now=None):
 
 async def reminder_loop():
     from . import accounts
+    from .board import sync_quietly as board_sync_quietly
     while True:
         try:
             if accounts.enabled():
@@ -245,6 +246,7 @@ async def reminder_loop():
                     try:
                         await asyncio.to_thread(settle_timers)
                         await asyncio.to_thread(run_once)
+                        await asyncio.to_thread(board_sync_quietly)
                     except Exception as error:
                         logging.warning('StudyHub reminders for a user: %s', type(error).__name__)
                     finally:
@@ -252,6 +254,7 @@ async def reminder_loop():
             else:
                 await asyncio.to_thread(settle_timers)
                 await asyncio.to_thread(run_once)
+                await asyncio.to_thread(board_sync_quietly)
         except Exception as error:
             logging.warning('StudyHub reminder worker: %s', type(error).__name__)
             try:

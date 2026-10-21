@@ -417,7 +417,7 @@ async function navigate(p) {
   if (page==='archive') archive=await api('/api/archive');
   if (page==='weekly') {weekOffset=0;weekly=await api('/api/weekly');}
   if (page==='day') planDay=todayDate();
-  if (page==='settings') {aiKey=await api('/api/assistant/key').catch(()=>null);await syncPushState();voices=await api('/api/voices').catch(()=>null);newToken=null;if(AUTH.multiuser)account=await api('/api/account').catch(()=>null);}
+  if (page==='settings') {aiKey=await api('/api/assistant/key').catch(()=>null);boardInfo=S.college?.college?await api('/api/board').catch(()=>null):null;await syncPushState();voices=await api('/api/voices').catch(()=>null);newToken=null;if(AUTH.multiuser)account=await api('/api/account').catch(()=>null);}
   await renderPage(); window.scrollTo(0,0);
 }
 function courseOptions(value='', blank='بدون مادة') { return `<option value="">${blank}</option>`+S.courses.map(c=>`<option value="${E(c.id)}" ${value===c.id?'selected':''}>${E(c.title)}</option>`).join(''); }
@@ -491,6 +491,7 @@ document.addEventListener('click',async event=>{
     if(b.dataset.layout) {libraryLayout=b.dataset.layout;try{localStorage.setItem('library-layout',libraryLayout);}catch{}return await renderPage();}
     if(b.dataset.page) {const target=b.dataset.scroll; if(target)Assistant.close(); await navigate(b.dataset.page); if(target)document.getElementById(target)?.scrollIntoView({behavior:'smooth',block:'start'}); return;}
     if(b.dataset.action==='assistant-open-now') return Assistant.open();
+    if(b.dataset.action==='board-sync') {b.disabled=true;const r=await api('/api/board/sync','POST',{});boardInfo=await api('/api/board');await refresh();toast(r.added?`اتضاف ${r.added} تاسك من الكلية`:'مفيش تاسكات جديدة');return;}
     if(b.dataset.action==='delete-ai-key') {b.disabled=true;await api('/api/assistant/key','DELETE');aiKey=await api('/api/assistant/key');Assistant.reset();toast('اتمسح الـ key');return await renderPage();}
     if(b.dataset.course) {activeCourse=b.dataset.course;page='course';return await renderPage();}
     if(b.dataset.kind) {kind=b.dataset.kind;filePage=0;return await renderPage();}
@@ -584,6 +585,7 @@ document.addEventListener('change',async event=>{
   const el=event.target;
   try {
     if(el.dataset.collegeCheck!==undefined){toggleCollegeFields(el.checked);return;}
+    if(el.dataset.boardToggle!==undefined){await api('/api/board','PUT',{enabled:el.checked});boardInfo=await api('/api/board');toast(el.checked?'تاسكات الكلية هتتضاف أوتوماتيك':'وقفت إضافة تاسكات الكلية');return;}
     if(el.dataset.toggleTask){
       const task=S.tasks.find(t=>t.id===el.dataset.toggleTask);el.disabled=true;
       try{await api(`/api/tasks/${task.id}`,'PUT',{...task,status:el.checked?'done':'todo'});await refresh();}
@@ -851,7 +853,8 @@ function accountView() {
     <form id="password-form" class="form-inline"><label class="sr-only" for="pw-old">الباسورد الحالي</label><input id="pw-old" name="old" type="password" autocomplete="current-password" placeholder="الباسورد الحالي" required><label class="sr-only" for="pw-new">الباسورد الجديد</label><input id="pw-new" name="new" type="password" autocomplete="new-password" minlength="8" placeholder="الباسورد الجديد (٨ حروف+)" required><button class="button secondary" type="submit">غيّر الباسورد</button></form>
   </section>`;
 }
-let aiKey = null;
+let aiKey = null, boardInfo = null;
+const L = (ar, en) => window.StudyI18n?.lang() === 'en' ? en : ar;
 function aiKeyView() {
   if (!aiKey) return '';
   const p = aiKey.providers || {}, groq = p.groq || {};
@@ -860,17 +863,25 @@ function aiKeyView() {
   return `<section class="settings-block ai-key" id="ai-key"><h2>المساعد الذكي: الـ API key بتاعك</h2>
     <p>المساعد بيضيفلك مهام ومواعيد من رسالة واحدة، وبيدوّر في نوتسك. عشان يشتغل محتاج API key مجاني من مزوّد AI. كل واحد بيحط الـ key بتاعه، فمحدش بيستهلك حدود التاني والمساعد بيفضل سريع لما ناس كتير تستخدمه في نفس الوقت.</p>
     ${current}
-    <details class="ai-guide" ${aiKey.set ? '' : 'open'}><summary>إزاي تجيب key مجاني من Groq (دقيقتين)</summary>
+    <details class="ai-guide" data-no-i18n ${aiKey.set ? '' : 'open'}>${L(`<summary>إزاي تجيب key مجاني من Groq (دقيقتين)</summary>
       <ol>
         <li>افتح <a href="${E(groq.keys_url || 'https://console.groq.com/keys')}" target="_blank" rel="noopener noreferrer" dir="ltr">console.groq.com/keys</a> وسجّل دخول بحساب Google. مجاني ومش محتاج فيزا.</li>
         <li>دوس <b>Create API Key</b>، اكتب أي اسم (مثلاً <span dir="ltr">StudyHub</span>)، وبعدين <b>Submit</b>.</li>
         <li>انسخ الـ key. بيبدأ بـ <code dir="ltr">gsk_</code> وبيظهر <b>مرة واحدة بس</b>، فانسخه على طول.</li>
         <li>ارجع هنا، اختار <b>Groq</b>، الصق الـ key، ودوس <b>حفظ وتجربة</b>.</li>
       </ol>
-      <p class="small">الـ key بيتحفظ <b>مشفّر</b> على السيرفر، ومحدش يقدر يشوفه ولا حتى صاحب الموقع من الواجهة. متبعتهوش لحد ولا تحطه في شات، وتقدر تمسحه أو تعمل واحد جديد من Groq في أي وقت.</p>
+      <p class="small">الـ key بيتحفظ <b>مشفّر</b> على السيرفر، ومحدش يقدر يشوفه ولا حتى صاحب الموقع من الواجهة. متبعتهوش لحد ولا تحطه في شات، وتقدر تمسحه أو تعمل واحد جديد من Groq في أي وقت.</p>`,
+      `<summary>How to get a free key from Groq (2 minutes)</summary>
+      <ol>
+        <li>Open <a href="${E(groq.keys_url || 'https://console.groq.com/keys')}" target="_blank" rel="noopener noreferrer">console.groq.com/keys</a> and sign in with Google. It's free, no card needed.</li>
+        <li>Click <b>Create API Key</b>, give it any name (for example StudyHub), then <b>Submit</b>.</li>
+        <li>Copy the key. It starts with <code>gsk_</code> and is shown <b>only once</b>, so copy it right away.</li>
+        <li>Come back here, pick <b>Groq</b>, paste the key and click <b>Save and test</b>.</li>
+      </ol>
+      <p class="small">Your key is stored <b>encrypted</b> on the server; nobody can see it in the app, not even the site owner. Never send it to anyone or paste it in a chat. You can delete it here or create a new one on Groq any time.</p>`)}
     </details>
     <form id="ai-key-form" class="form-grid college-join">
-      <div class="field"><label for="ai-provider">المزوّد</label><select id="ai-provider" name="provider">${Object.entries(p).map(([k,v])=>`<option value="${k}" ${(aiKey.provider||'groq')===k?'selected':''}>${E(v.name)}${k==='groq'?' (الأسهل)':''}</option>`).join('')}</select></div>
+      <div class="field"><label for="ai-provider">المزوّد</label><select id="ai-provider" name="provider">${Object.entries(p).map(([k,v])=>`<option value="${k}" ${(aiKey.provider||'groq')===k?'selected':''}>${E(v.name)}${k==='groq'?L(' (الأسهل)',' (easiest)'):''}</option>`).join('')}</select></div>
       <div class="field"><label for="ai-key-input">الـ API key</label><input id="ai-key-input" name="key" type="password" dir="ltr" autocomplete="off" spellcheck="false" placeholder="gsk_..." required></div>
       <button type="submit" class="button">حفظ وتجربة</button><div class="error field full" role="alert"></div>
     </form></section>`;
@@ -880,7 +891,11 @@ function collegeProfileView() {
   const c=S.college;
   return `<section class="settings-block"><h2>سنتك في الكلية</h2>
     <p>على أساسها بتوصلك تاسكات الكلية من قناة الدفعة، وبعدين أرشيف سنتك.</p>
-    <form id="profile-form" class="form-grid college-join">${collegeFields(c.level||'', c.program||'').replace('data-college-select','required')}<button type="submit" class="button secondary">حفظ</button></form></section>`;
+    <form id="profile-form" class="form-grid college-join">${collegeFields(c.level||'', c.program||'').replace('data-college-select','required')}<button type="submit" class="button secondary">حفظ</button></form>
+    ${boardInfo && boardInfo.available ? `<h3>تاسكات الكلية من قناة الدفعة</h3>
+    <p data-no-i18n>${L('أي assignment بينزل على قنوات الكلية لسنتك وبرنامجك بيتضاف لمهامك لوحده، بالديدلاين والمادة ولينك البوست. البيانات جاية من','Every assignment posted on the faculty channels for your level and program is added to your tasks automatically, with the deadline, the course and a link to the post. The data comes from')} <a href="https://github.com/moustafasayed068/hnu-board" target="_blank" rel="noopener noreferrer">HNU Board</a> ${L('اللي عمله مصطفى سيد.','by Moustafa Sayed.')}</p>
+    <label class="checkbox-option"><input type="checkbox" data-board-toggle ${boardInfo.enabled?'checked':''}> ضيف تاسكات الكلية لمهامي أوتوماتيك</label>
+    <div class="toolbar">${act('board-sync','زامن دلوقتي','button secondary')}<span class="small muted">${boardInfo.last ? 'آخر مزامنة: '+dateFormat(new Date(boardInfo.last*1000),{weekday:'short',hour:'2-digit',minute:'2-digit'}) : 'لسه متزامنتش'}${boardInfo.imported ? ' · '+boardInfo.imported+' بوست' : ''}${boardInfo.error ? ' · آخر محاولة فشلت' : ''}</span></div>` : ''}</section>`;
 }
 function vaultUploadView() {
   return `<section class="settings-block"><h2>فولدرات Obsidian بتاعتك</h2>
