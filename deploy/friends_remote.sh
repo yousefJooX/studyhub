@@ -17,8 +17,8 @@ import json, os, sys
 personal, target, data, origin, college_code = sys.argv[1:]
 src = json.load(open(personal)) if os.path.exists(personal) else {}
 cfg = json.load(open(target)) if os.path.exists(target) else {}
-for key in ('ARCHIVE_DATA_DIR', 'STUDY_LLM_BASE_URL', 'STUDY_LLM_MODEL', 'STUDY_LLM_API_KEY',
-            'STUDY_LLM_FALLBACK_BASE_URL', 'STUDY_LLM_FALLBACK_MODEL', 'STUDY_LLM_FALLBACK_API_KEY'):
+# Only the archive path is shared. The AI key is NOT copied: every friend adds their own key in Settings.
+for key in ('ARCHIVE_DATA_DIR',):
     if key in src and key not in cfg:
         cfg[key] = src[key]
 cfg.update({'STUDY_DATA_DIR': data, 'STUDY_MULTIUSER': '1', 'STUDY_PUBLIC_ORIGIN': origin})
