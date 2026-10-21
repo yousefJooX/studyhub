@@ -59,14 +59,17 @@ function loginView(mode='login') {
        <label for="su-user">اسم المستخدم</label><input id="su-user" name="username" dir="ltr" autocomplete="username" pattern="[A-Za-z0-9_.\-]{3,32}" minlength="3" maxlength="32" required>
        <small class="muted">إنجليزي وأرقام بس، من ٣ حروف</small>
        <label for="su-pass">الباسورد</label><input id="su-pass" name="password" type="password" autocomplete="new-password" minlength="8" required>${AUTH.invite ? `
-       <label for="su-code">كود الدعوة</label><input id="su-code" name="code" dir="ltr" autocomplete="off" required>` : ''}`
+       <label for="su-code">كود الدعوة</label><input id="su-code" name="code" dir="ltr" autocomplete="off" required>` : ''}
+       <label class="checkbox-option college-check"><input type="checkbox" name="college" value="1" data-college-check> أنا طالب في ${E(AUTH.college_name || 'الكلية')}</label>
+       ${AUTH.college_code ? `<div class="college-code" hidden><label for="su-college">كود الكلية</label><input id="su-college" name="college_code" dir="ltr" autocomplete="off"><small class="muted">بتلاقيه في جروب الدفعة</small></div>` : ''}
+       <small class="muted">أرشيف الكلية (ملفات المواد والمحاضرات) بيظهر لطلاب الكلية بس.</small>`
     : `${multi ? `<label for="username">اسم المستخدم</label><input id="username" name="username" dir="ltr" autocomplete="username" required autofocus>` : ''}
        <label for="password">كلمة المرور</label><input id="password" name="password" type="password" autocomplete="current-password" required ${multi ? '' : 'autofocus'}>`;
   $('#app').innerHTML = `<div class="login-page"><section class="login-art"><img src="/static/icon.svg" alt=""><div class="label">YOUR STUDY SPACE</div><h1>كل اللي بتتعلّمه.<br>في مساحتك.</h1><p>مواد الكلية، نوتس Obsidian، والكورسات اللي بتختارها بنفسك. خطة واحدة، من أي جهاز.</p></section><section class="login-form"><form id="${signup ? 'signup-form' : 'login-form'}"><h2>${signup ? 'اعمل حسابك' : 'أهلًا بيك'}</h2><p>${signup ? 'مساحة دراسية خاصة بيك، محدش يشوفها غيرك.' : 'ادخل لمساحتك الدراسية.'}</p>${fields}<button class="button" type="submit">${signup ? 'اعمل الحساب' : 'دخول لمساحتي'} ${I('arrow')}</button><div id="login-error" class="error" role="alert"></div>${switcher}<p class="small muted">بياناتك محفوظة على السيرفر.</p></form></section></div>`;
 }
 const pageNames = {home:'نظرة عامة',day:'قائمة يومي',courses:'المواد والكورسات',course:'المواد والكورسات',tasks:'المهام',schedule:'الجدول',library:'النوتس والملفات',weekly:'ملخص الأسبوع',vnote:'النوتس والملفات',archive:'أرشيف الكلية',settings:'الإعدادات',note:'النوتس والملفات'};
 function shell() {
-  $('#app').innerHTML = `${!navigator.onLine ? '<div class="offline">إنت أوفلاين. الاتصال بالسيرفر مطلوب لفتح بياناتك وحفظ التغييرات.</div>' : ''}<div class="layout"><aside class="sidebar"><div class="brand"><img src="/static/icon.svg" alt=""><div>مساحتي<small>STUDY WORKSPACE</small></div></div><nav>${[['home','home'],['day','calendar'],['courses','book'],['tasks','task'],['schedule','calendar'],['weekly','chart'],['library','file'],['archive','archive']].map(([p,i]) => `<button class="nav ${page === p || (p==='courses' && page==='course') || (p==='library' && (page==='note'||page==='vnote')) ? 'active':''}" data-page="${p}">${I(i)}${pageNames[p]}${p==='tasks' && S.tasks.filter(t=>t.status!=='done').length ? `<span class="count">${S.tasks.filter(t=>t.status!=='done').length}</span>`:''}</button>`).join('')}<button class="nav ${page==='settings'?'active':''}" data-page="settings">${I('settings')}الإعدادات</button></nav><div class="side-bottom"><div class="profile"><div class="avatar">${E(firstName().slice(0,1) || 'S')}</div><div><span dir="auto">${E(userName())}</span><small><span class="server-dot"></span>مساحة شخصية</small></div>${act('logout',I('logout'),'icon-button','aria-label="تسجيل الخروج"')}</div></div></aside><main class="main"><header class="topbar"><div class="breadcrumb">مساحتي <span> / </span><b>${pageNames[page]}</b></div><div class="top-actions"><span class="pill">${dateFormat(new Date(),{weekday:'short'})}</span><button type="button" class="lang-toggle" data-lang-toggle data-no-i18n aria-label="${window.StudyI18n?.lang()==='en'?'التحويل للعربي':'Switch to English'}">${window.StudyI18n?.lang()==='en'?'عربي':'English'}</button>${act('install',I('download')+' تثبيت التطبيق','button ghost')}${act('refresh',I('refresh'),'icon-button','aria-label="تحديث البيانات"')}</div></header><div id="content"></div></main></div>`;
+  $('#app').innerHTML = `${!navigator.onLine ? '<div class="offline">إنت أوفلاين. الاتصال بالسيرفر مطلوب لفتح بياناتك وحفظ التغييرات.</div>' : ''}<div class="layout"><aside class="sidebar"><div class="brand"><img src="/static/icon.svg" alt=""><div>مساحتي<small>STUDY WORKSPACE</small></div></div><nav>${[['home','home'],['day','calendar'],['courses','book'],['tasks','task'],['schedule','calendar'],['weekly','chart'],['library','file'],...(S.archive?[['archive','archive']]:[])].map(([p,i]) => `<button class="nav ${page === p || (p==='courses' && page==='course') || (p==='library' && (page==='note'||page==='vnote')) ? 'active':''}" data-page="${p}">${I(i)}${pageNames[p]}${p==='tasks' && S.tasks.filter(t=>t.status!=='done').length ? `<span class="count">${S.tasks.filter(t=>t.status!=='done').length}</span>`:''}</button>`).join('')}<button class="nav ${page==='settings'?'active':''}" data-page="settings">${I('settings')}الإعدادات</button></nav><div class="side-bottom"><div class="profile"><div class="avatar">${E(firstName().slice(0,1) || 'S')}</div><div><span dir="auto">${E(userName())}</span><small><span class="server-dot"></span>مساحة شخصية</small></div>${act('logout',I('logout'),'icon-button','aria-label="تسجيل الخروج"')}</div></div></aside><main class="main"><header class="topbar"><div class="breadcrumb">مساحتي <span> / </span><b>${pageNames[page]}</b></div><div class="top-actions"><span class="pill">${dateFormat(new Date(),{weekday:'short'})}</span><button type="button" class="lang-toggle" data-lang-toggle data-no-i18n aria-label="${window.StudyI18n?.lang()==='en'?'التحويل للعربي':'Switch to English'}">${window.StudyI18n?.lang()==='en'?'عربي':'English'}</button>${act('install',I('download')+' تثبيت التطبيق','button ghost')}${act('refresh',I('refresh'),'icon-button','aria-label="تحديث البيانات"')}</div></header><div id="content"></div></main></div>`;
 }
 function heading(title, subtitle, button='') { return `<div class="page-heading"><div><h1>${E(title)}</h1><p>${E(subtitle)}</p></div>${button}</div>`; }
 function courseCards(courses) {
@@ -75,7 +78,7 @@ function courseCards(courses) {
 function coursesView() {
   const courses = S.courses.filter(c=>kind==='all'||c.kind===kind);
   return heading('المواد والكورسات','أضف أي كورس بتاخده برّه الكلية، ونظّم مهامه ونوتسه ومواعيده.',act('personal-course',I('plus')+' كورس خارج الكلية'))+
-    `<div class="toolbar">${act('college-course',I('plus')+' مادة كلية','button secondary')}<button class="button ghost" data-page="archive">إضافة من أرشيف الكلية ←</button><div class="filter">${[['all','الكل'],['college','مواد الكلية'],['personal','كورسات خارج الكلية']].map(([v,t])=>`<button data-kind="${v}" class="${kind===v?'active':''}">${t}</button>`).join('')}</div></div>`+
+    `<div class="toolbar">${act('college-course',I('plus')+' مادة كلية','button secondary')}${S.archive?'<button class="button ghost" data-page="archive">إضافة من أرشيف الكلية ←</button>':''}<div class="filter">${[['all','الكل'],['college','مواد الكلية'],['personal','كورسات خارج الكلية']].map(([v,t])=>`<button data-kind="${v}" class="${kind===v?'active':''}">${t}</button>`).join('')}</div></div>`+
     (courses.length?courseCards(courses):empty('ابدأ بمادة أو كورس','الكورس الشخصي مش محتاج أرشيف كلية أو فولدر Obsidian.','course','إضافة مادة أو كورس'));
 }
 function taskRows(tasks) {
@@ -137,8 +140,8 @@ function courseView() {
   if (!c) return empty('المادة غير موجودة','ارجع لقائمة المواد.');
   const tasks = S.tasks.filter(t=>t.course_id===c.id);
   return `<button class="back" data-page="courses">← كل المواد والكورسات</button>` + heading(c.title,c.kind==='college'?'مادة كلية':'كورس خارج الكلية',act('edit-course',I('edit')+' تعديل / إزالة'))+
-    `<div class="toolbar">${act('task',I('plus')+' مهمة')}${act('note',I('plus')+' نوت','button secondary')}${act('upload',I('plus')+' ملف','button secondary')}${act('course-files',I('file')+' مكتبة المادة','button secondary')}${c.archive_account?act('archive-files',I('archive')+' ملفات الكلية','button secondary',`data-account="${E(c.archive_account)}" data-source-course="${E(c.archive_course)}"`):''}</div>`+
-    `<div class="connection"><span>${c.vault_folder?`Obsidian: <b dir="auto">${E(c.vault_folder)}</b>`:'فولدر Obsidian غير مربوط'} ${act('edit-course','تعديل','button ghost')}</span><span>${c.archive_account?'المادة مربوطة بأرشيف الكلية':'تقدر تربطها بمادة من أرشيف الكلية'}</span></div>`+
+    `<div class="toolbar">${act('task',I('plus')+' مهمة')}${act('note',I('plus')+' نوت','button secondary')}${act('upload',I('plus')+' ملف','button secondary')}${act('course-files',I('file')+' مكتبة المادة','button secondary')}${S.archive&&c.archive_account?act('archive-files',I('archive')+' ملفات الكلية','button secondary',`data-account="${E(c.archive_account)}" data-source-course="${E(c.archive_course)}"`):''}</div>`+
+    `<div class="connection"><span>${c.vault_folder?`Obsidian: <b dir="auto">${E(c.vault_folder)}</b>`:'فولدر Obsidian غير مربوط'} ${act('edit-course','تعديل','button ghost')}</span>${S.archive?`<span>${c.archive_account?'المادة مربوطة بأرشيف الكلية':'تقدر تربطها بمادة من أرشيف الكلية'}</span>`:''}</div>`+
     `<div class="section-title"><h2>مهام المادة</h2><span class="muted small">${tasks.filter(t=>t.status==='done').length} / ${tasks.length} مكتمل</span></div><section class="panel">${tasks.length?taskRows(tasks):empty('خطط للمادة','كل مهمة هنا هتظهر في الداشبورد كمان.','task','أضف مهمة')}</section>`+
     `<div class="section-title"><h2>نوتس وملفات أضفتها</h2></div><section class="panel">${personalFiles(c.id)}</section>`;
 }
@@ -398,6 +401,7 @@ async function renderPage() {
 async function navigate(p) {
   page=p; query='';kind='all';status='open';selectedCourse='';filePage=0;activeCourse='';folderFilter='';
   if (page==='library') files=(await api('/api/vault')).files;
+  if (page==='archive' && !S.archive) page='home';
   if (page==='archive') archive=await api('/api/archive');
   if (page==='weekly') {weekOffset=0;weekly=await api('/api/weekly');}
   if (page==='day') planDay=todayDate();
@@ -565,6 +569,9 @@ document.addEventListener('click',async event=>{
 document.addEventListener('change',async event=>{
   const el=event.target;
   try {
+    if(el.dataset.collegeCheck!==undefined){
+      const box=document.querySelector('.college-code'); if(box){box.hidden=!el.checked; box.querySelector('input').required=el.checked;} return;
+    }
     if(el.dataset.toggleTask){
       const task=S.tasks.find(t=>t.id===el.dataset.toggleTask);el.disabled=true;
       try{await api(`/api/tasks/${task.id}`,'PUT',{...task,status:el.checked?'done':'todo'});await refresh();}
@@ -617,6 +624,7 @@ document.addEventListener('submit',async event=>{
       await api('/api/tasks','POST',{title:data.title,planned_date:planDay});
     }else if(form.id==='mount-form')await api('/api/vault/mounts','POST',data);
     else if(form.id==='import-form')await api('/api/archive/import','POST',data);
+    else if(form.id==='college-form'){await api('/api/account/college','POST',data);account=await api('/api/account');await refresh();toast('أرشيف الكلية اتفعّل عندك');return;}
     else return;
     if($('#modal').open)$('#modal').close();await refresh();toast('اتحفظت على سيرفرك');
   }catch(error){const el=form.querySelector('.error');if(el)el.textContent=error.message;else toast(error.message);}
@@ -813,6 +821,10 @@ function accountView() {
   return `<section class="settings-block account-block"><h2>حسابك</h2>
     <div class="account-row"><div class="avatar">${E(firstName().slice(0,1))}</div><div><b dir="auto">${E(account.user.name)}</b><small dir="ltr">@${E(account.user.username)}</small></div></div>
     <div class="quota"><div class="quota-bar"><span style="width:${pct}%"></span></div><small>${used} من ${quota} ميجا مستخدمين</small></div>
+    <h3>أرشيف الكلية</h3>
+    ${account.user.college ? `<p>✓ حسابك متسجّل كطالب في ${E(AUTH.college_name || 'الكلية')}، وأرشيف الكلية ظاهر عندك.</p>`
+      : `<p>أرشيف الكلية لطلاب ${E(AUTH.college_name || 'الكلية')} بس.${AUTH.college_code ? ' لو انت منهم، اكتب كود الكلية اللي في جروب الدفعة.' : ' لو انت منهم، فعّله من هنا.'}</p>
+         <form id="college-form" class="form-inline">${AUTH.college_code ? '<label class="sr-only" for="college-code">كود الكلية</label><input id="college-code" name="code" dir="ltr" placeholder="كود الكلية" required>' : ''}<button type="submit" class="button secondary">أنا من الكلية</button></form>`}
     <h3>وصّل Claude بمساحتك (MCP)</h3>
     <p>اعمل token، وحط الرابط في Claude ← Settings ← Connectors ← Add custom connector. Claude هيقدر يقرا ويضيف مهامك ومواعيدك ونوتسك.</p>
     ${newToken ? `<div class="token-box"><label for="token-url">رابط الـ connector (بيظهر مرة واحدة بس)</label><div class="token-row"><input id="token-url" readonly dir="ltr" value="${E(newToken.connector_url)}"><button type="button" class="button" data-copy-token>نسخ</button></div><p class="small">متبعتش الرابط ده لحد، هو زي الباسورد.</p></div>` : ''}

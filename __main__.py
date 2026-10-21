@@ -79,7 +79,7 @@ def main():
     parser.add_argument('--archive-root', type=Path)
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=8091)
-    parser.add_argument('rest', nargs='*', help='users: list | disable NAME | enable NAME | delete NAME | reset-password NAME')
+    parser.add_argument('rest', nargs='*', help='users: list | disable NAME | enable NAME | college NAME | no-college NAME | delete NAME | reset-password NAME')
     args = parser.parse_args()
     config_path = load_config()
     if args.command in ('init', 'password'):
@@ -117,7 +117,8 @@ def main():
                 for r in db.execute('SELECT * FROM users ORDER BY created'):
                     seen = _time.strftime('%Y-%m-%d %H:%M', _time.localtime(r['last_seen'])) if r['last_seen'] else 'never'
                     size = accounts.folder_size(accounts.base_root() / 'users' / r['id']) / 1048576
-                    print(f"{r['username']:<20} {r['name']:<24} {'DISABLED' if r['disabled'] else 'active':<9} {size:7.1f} MB  last seen {seen}")
+                    college = 'FCI' if r['college'] else '-'
+                    print(f"{r['username']:<20} {r['name']:<24} {'DISABLED' if r['disabled'] else 'active':<9} {college:<4} {size:7.1f} MB  last seen {seen}")
                 return
             row = db.execute('SELECT * FROM users WHERE username=?', (name.lower(),)).fetchone()
             if not row:
@@ -125,6 +126,9 @@ def main():
             if action in ('disable', 'enable'):
                 db.execute('UPDATE users SET disabled=? WHERE id=?', (1 if action == 'disable' else 0, row['id']))
                 db.execute('DELETE FROM sessions WHERE user_id=?', (row['id'],))
+            elif action in ('college', 'no-college'):
+                # FCI students see the shared college archive; others don't.
+                db.execute('UPDATE users SET college=? WHERE id=?', (1 if action == 'college' else 0, row['id']))
             elif action == 'reset-password':
                 password = getpass.getpass(f'New password for {name}: ')
                 if len(password) < 8:
@@ -139,7 +143,7 @@ def main():
                 db.execute('DELETE FROM users WHERE id=?', (row['id'],))
                 shutil.rmtree(accounts.base_root() / 'users' / row['id'], ignore_errors=True)
             else:
-                parser.error('users: list | disable NAME | enable NAME | delete NAME | reset-password NAME')
+                parser.error('users: list | disable NAME | enable NAME | college NAME | no-college NAME | delete NAME | reset-password NAME')
         print(f'{action}: {name} done.')
         return
     if args.command == 'llm':

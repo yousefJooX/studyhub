@@ -56,6 +56,8 @@ def accounts_db():
             CREATE TABLE IF NOT EXISTS api_tokens(token TEXT PRIMARY KEY, user_id TEXT NOT NULL, created REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS attempts(key TEXT PRIMARY KEY, started REAL NOT NULL, count INTEGER NOT NULL);
             ''')
+            if 'college' not in {r[1] for r in db.execute('PRAGMA table_info(users)')}:
+                db.execute('ALTER TABLE users ADD COLUMN college INTEGER NOT NULL DEFAULT 0')
             yield db
     finally:
         db.close()
@@ -80,7 +82,38 @@ def check_password(password, encoded):
 
 
 def public(row):
-    return {'id': row['id'], 'username': row['username'], 'name': row['name']}
+    return {'id': row['id'], 'username': row['username'], 'name': row['name'], 'college': bool(row['college'])}
+
+
+COLLEGE_NAME = 'كلية الحاسبات والمعلومات – جامعة حلوان'
+
+
+def college_code_required():
+    """STUDY_COLLEGE_CODE: a code shared only in the faculty's groups. Without it, students just tick the box."""
+    return bool(os.environ.get('STUDY_COLLEGE_CODE', ''))
+
+
+def college_code_ok(code):
+    expected = os.environ.get('STUDY_COLLEGE_CODE', '')
+    return not expected or hmac.compare_digest(str(code or '').strip().encode(), expected.encode())
+
+
+def archive_allowed():
+    """The shared college archive is only for students of the faculty. The single-owner site always has it."""
+    if not enabled():
+        return True
+    user = CURRENT_USER.get()
+    return bool(user and user.get('college'))
+
+
+def require_archive():
+    if not archive_allowed():
+        raise HTTPException(403, 'أرشيف الكلية متاح لطلاب ' + COLLEGE_NAME + ' بس')
+
+
+def set_college(user_id, value):
+    with accounts_db() as db:
+        db.execute('UPDATE users SET college=? WHERE id=?', (1 if value else 0, user_id))
 
 
 def user_by(column, value):
@@ -155,6 +188,8 @@ class Signup(BaseModel):
     name: str = Field(min_length=1, max_length=60)
     password: str = Field(min_length=8, max_length=256)
     code: str = Field(default='', max_length=200)
+    college: bool = False
+    college_code: str = Field(default='', max_length=200)
 
 
 class AccountLogin(BaseModel):
@@ -178,6 +213,8 @@ def signup(body: Signup, request: Request, response: Response):
     throttle('signup:all', 30, 3600)  # also cap total sign-ups per hour, whatever the address
     if invite_required() and not hmac.compare_digest(body.code.strip().encode(), os.environ['STUDY_SIGNUP_CODE'].encode()):
         raise HTTPException(403, 'كود الدعوة غلط. اطلبه من صاحب الموقع')
+    if body.college and not college_code_ok(body.college_code):
+        raise HTTPException(403, 'كود الكلية غلط. اطلبه من جروب الدفعة، أو شيل علامة «أنا من الكلية»')
     username = body.username.strip().lower()
     if not USERNAME.fullmatch(username):
         raise HTTPException(400, 'اسم المستخدم من ٣ لـ ٣٢ حرف إنجليزي صغير أو أرقام أو . _ -')
@@ -190,11 +227,11 @@ def signup(body: Signup, request: Request, response: Response):
             raise HTTPException(403, 'الموقع وصل للعدد الأقصى من الحسابات')
         if db.execute('SELECT 1 FROM users WHERE username=?', (username,)).fetchone():
             raise HTTPException(409, 'اسم المستخدم ده محجوز، جرّب اسم تاني')
-        db.execute('INSERT INTO users(id,username,name,password,created) VALUES (?,?,?,?,?)',
-                   (user_id, username, body.name.strip(), hash_password(body.password), time.time()))
+        db.execute('INSERT INTO users(id,username,name,password,created,college) VALUES (?,?,?,?,?,?)',
+                   (user_id, username, body.name.strip(), hash_password(body.password), time.time(), 1 if body.college else 0))
     user_root(user_id)
     start_session(response, user_id)
-    return {'authenticated': True, 'user': {'id': user_id, 'username': username, 'name': body.name.strip()}}
+    return {'authenticated': True, 'user': {'id': user_id, 'username': username, 'name': body.name.strip(), 'college': body.college}}
 
 
 def login(body: AccountLogin, request: Request, response: Response):

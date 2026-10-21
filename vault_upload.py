@@ -166,6 +166,16 @@ def delete_token():
     return {'ok': True}
 
 
+@account.post('/college')
+def join_college(body: dict):
+    user = me()
+    accounts.throttle('college:' + user['id'], 10, 3600)
+    if not accounts.college_code_ok(body.get('code', '')):
+        raise HTTPException(403, 'كود الكلية غلط. اطلبه من جروب الدفعة')
+    accounts.set_college(user['id'], True)
+    return {'ok': True, 'college': True}
+
+
 @account.post('/password')
 def change_password(body: dict):
     user = me()

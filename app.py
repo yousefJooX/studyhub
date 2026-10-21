@@ -176,7 +176,8 @@ class Login(BaseModel):
 @app.get('/api/auth')
 def auth_status(request: Request):
     from . import accounts
-    info = {'multiuser': accounts.enabled(), 'signup': accounts.signup_open(), 'invite': accounts.invite_required()}
+    info = {'multiuser': accounts.enabled(), 'signup': accounts.signup_open(), 'invite': accounts.invite_required(),
+            'college_code': accounts.college_code_required(), 'college_name': accounts.COLLEGE_NAME}
     try:
         authorized(request)
         user = accounts.CURRENT_USER.get()
@@ -851,6 +852,11 @@ def uploaded_file(entry_id: str):
     return serve_document(data_root() / 'uploads' / entry_id, entry['name'])
 
 
+def archive_guard():
+    from . import accounts
+    accounts.require_archive()
+
+
 def archive_root():
     return Path(os.environ.get('ARCHIVE_DATA_DIR', 'data')).resolve()
 
@@ -864,7 +870,7 @@ def archive_rows(query, args=()):
         return [dict(r) for r in db.execute(query, args)]
 
 
-@app.get('/api/archive', dependencies=[Depends(authorized)])
+@app.get('/api/archive', dependencies=[Depends(authorized), Depends(archive_guard)])
 def archive():
     accounts = [json.loads(r['meta']) | {'synced_at': r['synced_at']} for r in archive_rows('SELECT meta,synced_at FROM accounts ORDER BY key')]
     courses = [json.loads(r['data']) | {'account': r['account']} for r in archive_rows('SELECT account,data FROM courses ORDER BY account,id')]
@@ -887,12 +893,12 @@ def archive_items(account, course):
     return output
 
 
-@app.get('/api/archive/{account}/{course}/items', dependencies=[Depends(authorized)])
+@app.get('/api/archive/{account}/{course}/items', dependencies=[Depends(authorized), Depends(archive_guard)])
 def list_archive_items(account: str, course: str):
     return {'items': archive_items(account, course)}
 
 
-@app.get('/api/archive/file/{account}/{item_id}/{index}', dependencies=[Depends(authorized)])
+@app.get('/api/archive/file/{account}/{item_id}/{index}', dependencies=[Depends(authorized), Depends(archive_guard)])
 def archive_file(account: str, item_id: str, index: int):
     records = archive_rows('SELECT data FROM items WHERE account=? AND id=? AND active=1', (account, item_id))
     if not records:
@@ -915,7 +921,7 @@ class ImportCourse(BaseModel):
     existing_id: str = ''
 
 
-@app.post('/api/archive/import', dependencies=[Depends(authorized)])
+@app.post('/api/archive/import', dependencies=[Depends(authorized), Depends(archive_guard)])
 def import_course(body: ImportCourse):
     records = archive_rows('SELECT data FROM courses WHERE account=? AND id=?', (body.account, body.course))
     if not records:
@@ -941,7 +947,12 @@ def state():
             'available_folders': available, 'vault_count': len(files), 'vault_notes': sum(f['kind'] == 'note' for f in files),
             'vault_available': bool(files), 'timezone': 'Africa/Cairo', 'server_time': time.time(),
             'task_defaults': {'duration_minutes': setting('default_task_minutes', 25)},
-            'user': current_user_public()}
+            'user': current_user_public(), 'archive': archive_access()}
+
+
+def archive_access():
+    from . import accounts
+    return accounts.archive_allowed()
 
 
 def current_user_public():
