@@ -111,6 +111,25 @@ def resolve(request: Request):
     return dict(user) if user else None
 
 
+def client_ip(request: Request):
+    """Real client address. Behind the local tunnel every request comes from 127.0.0.1, so take the
+    address the proxy appended LAST to X-Forwarded-For (earlier entries can be forged by the client)."""
+    host = request.client.host if request.client else 'unknown'
+    if host in ('127.0.0.1', '::1', 'localhost'):
+        hops = [h.strip() for h in request.headers.get('x-forwarded-for', '').split(',') if h.strip()]
+        if hops:
+            return hops[-1][:64]
+    return host
+
+
+def disk_guard(extra=0):
+    """Refuse new uploads when the server disk is almost full (STUDY_MIN_FREE_MB, default 2048)."""
+    import shutil
+    free = shutil.disk_usage(base_root()).free
+    if free - extra < int(os.environ.get('STUDY_MIN_FREE_MB', '2048')) * 1024 * 1024:
+        raise HTTPException(507, 'مساحة السيرفر قربت تخلص، الرفع متوقف مؤقتًا. كلّم صاحب الموقع')
+
+
 def throttle(key, limit, window):
     now = time.time()
     with accounts_db() as db:
@@ -135,6 +154,7 @@ class Signup(BaseModel):
     username: str = Field(min_length=3, max_length=32)
     name: str = Field(min_length=1, max_length=60)
     password: str = Field(min_length=8, max_length=256)
+    code: str = Field(default='', max_length=200)
 
 
 class AccountLogin(BaseModel):
@@ -146,12 +166,18 @@ def signup_open():
     return enabled() and os.environ.get('STUDY_SIGNUP', 'open') == 'open'
 
 
+def invite_required():
+    """Set STUDY_SIGNUP_CODE to make sign-up need an invite code you share with friends only."""
+    return bool(os.environ.get('STUDY_SIGNUP_CODE', ''))
+
+
 def signup(body: Signup, request: Request, response: Response):
     if not signup_open():
         raise HTTPException(403, 'التسجيل مقفول حاليًا')
-    client = request.client.host if request.client else 'unknown'
-    forwarded = request.headers.get('x-forwarded-for', '').split(',')[0].strip()
-    throttle('signup:' + (forwarded or client), 5, 3600)
+    throttle('signup:' + client_ip(request), 5, 3600)
+    throttle('signup:all', 30, 3600)  # also cap total sign-ups per hour, whatever the address
+    if invite_required() and not hmac.compare_digest(body.code.strip().encode(), os.environ['STUDY_SIGNUP_CODE'].encode()):
+        raise HTTPException(403, 'كود الدعوة غلط. اطلبه من صاحب الموقع')
     username = body.username.strip().lower()
     if not USERNAME.fullmatch(username):
         raise HTTPException(400, 'اسم المستخدم من ٣ لـ ٣٢ حرف إنجليزي صغير أو أرقام أو . _ -')
@@ -172,10 +198,8 @@ def signup(body: Signup, request: Request, response: Response):
 
 
 def login(body: AccountLogin, request: Request, response: Response):
-    client = request.client.host if request.client else 'unknown'
-    forwarded = request.headers.get('x-forwarded-for', '').split(',')[0].strip()
     username = body.username.strip().lower()
-    throttle('login:' + (forwarded or client), 15, 900)
+    throttle('login:' + client_ip(request), 15, 900)
     throttle('login-user:' + username, 10, 900)
     with accounts_db() as db:
         row = db.execute('SELECT * FROM users WHERE username=?', (username,)).fetchone()
@@ -238,6 +262,7 @@ def check_quota(extra=0):
     if not enabled() or not user:
         return
     quota = int(os.environ.get('STUDY_USER_QUOTA_MB', '1024')) * 1024 * 1024
+    disk_guard(extra)
     if folder_size(user_root(user['id'])) + extra > quota:
         raise HTTPException(413, f'مساحتك على السيرفر خلصت ({quota // 1048576} ميجا). امسح ملفات قديمة الأول')
 
@@ -249,6 +274,7 @@ def remaining_bytes():
         return None
     quota = int(os.environ.get('STUDY_USER_QUOTA_MB', '1024')) * 1024 * 1024
     left = quota - folder_size(user_root(user['id']))
+    disk_guard()
     if left <= 0:
         raise HTTPException(413, f'مساحتك على السيرفر خلصت ({quota // 1048576} ميجا). امسح ملفات قديمة الأول')
     return left

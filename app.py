@@ -157,6 +157,10 @@ async def protection(request: Request, call_next):
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Referrer-Policy'] = 'same-origin'
     response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
+    response.headers['Permissions-Policy'] = 'camera=(), geolocation=(), payment=(), usb=(), microphone=(self)'
+    if os.environ.get('STUDY_SECURE_COOKIE', 'true') == 'true':
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000'
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
         "connect-src 'self'; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'")
@@ -172,7 +176,7 @@ class Login(BaseModel):
 @app.get('/api/auth')
 def auth_status(request: Request):
     from . import accounts
-    info = {'multiuser': accounts.enabled(), 'signup': accounts.signup_open()}
+    info = {'multiuser': accounts.enabled(), 'signup': accounts.signup_open(), 'invite': accounts.invite_required()}
     try:
         authorized(request)
         user = accounts.CURRENT_USER.get()
@@ -199,7 +203,7 @@ def login(body: Login, request: Request, response: Response):
     encoded = os.environ.get('STUDY_PASSWORD_HASH', '')
     if not encoded:
         raise HTTPException(503, 'اضبط كلمة مرور الموقع على السيرفر أولًا')
-    client = request.client.host if request.client else 'unknown'
+    client = accounts.client_ip(request)
     now = time.time()
     with database() as db:
         attempt = db.execute('SELECT started,count FROM login_attempts WHERE client=?', (client,)).fetchone()

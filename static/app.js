@@ -58,7 +58,8 @@ function loginView(mode='login') {
     ? `<label for="su-name">اسمك</label><input id="su-name" name="name" autocomplete="name" maxlength="60" required autofocus>
        <label for="su-user">اسم المستخدم</label><input id="su-user" name="username" dir="ltr" autocomplete="username" pattern="[A-Za-z0-9_.\-]{3,32}" minlength="3" maxlength="32" required>
        <small class="muted">إنجليزي وأرقام بس، من ٣ حروف</small>
-       <label for="su-pass">الباسورد</label><input id="su-pass" name="password" type="password" autocomplete="new-password" minlength="8" required>`
+       <label for="su-pass">الباسورد</label><input id="su-pass" name="password" type="password" autocomplete="new-password" minlength="8" required>${AUTH.invite ? `
+       <label for="su-code">كود الدعوة</label><input id="su-code" name="code" dir="ltr" autocomplete="off" required>` : ''}`
     : `${multi ? `<label for="username">اسم المستخدم</label><input id="username" name="username" dir="ltr" autocomplete="username" required autofocus>` : ''}
        <label for="password">كلمة المرور</label><input id="password" name="password" type="password" autocomplete="current-password" required ${multi ? '' : 'autofocus'}>`;
   $('#app').innerHTML = `<div class="login-page"><section class="login-art"><img src="/static/icon.svg" alt=""><div class="label">YOUR STUDY SPACE</div><h1>كل اللي بتتعلّمه.<br>في مساحتك.</h1><p>مواد الكلية، نوتس Obsidian، والكورسات اللي بتختارها بنفسك. خطة واحدة، من أي جهاز.</p></section><section class="login-form"><form id="${signup ? 'signup-form' : 'login-form'}"><h2>${signup ? 'اعمل حسابك' : 'أهلًا بيك'}</h2><p>${signup ? 'مساحة دراسية خاصة بيك، محدش يشوفها غيرك.' : 'ادخل لمساحتك الدراسية.'}</p>${fields}<button class="button" type="submit">${signup ? 'اعمل الحساب' : 'دخول لمساحتي'} ${I('arrow')}</button><div id="login-error" class="error" role="alert"></div>${switcher}<p class="small muted">بياناتك محفوظة على السيرفر.</p></form></section></div>`;

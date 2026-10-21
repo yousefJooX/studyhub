@@ -7,6 +7,10 @@ It has two modes:
 - **Personal site.** One owner, one password.
 - **Friends site** (`STUDY_MULTIUSER=1`). Open sign-up, and every user gets private data on the server. A college archive can be shared read-only with everyone.
 
+## Try it
+
+The friends site is live at **https://study-joox-friends.loophole.site**. Open it, create an account (you may need an invite code from the owner) and install it on your phone from the browser menu.
+
 ## Video walkthrough
 
 https://github.com/user-attachments/assets/26c5a38d-f465-41d8-87da-a19e826c9ecc
@@ -94,6 +98,8 @@ Settings live in `config.json` (path from `STUDY_CONFIG_FILE`, mode 600) or in e
 | `STUDY_MAX_USERS` | Friends-mode account limit |
 | `STUDY_USER_QUOTA_MB` | Friends-mode storage limit per user |
 | `STUDY_ASSISTANT_DAILY` | Friends-mode assistant messages per user per day |
+| `STUDY_SIGNUP_CODE` | Friends-mode invite code; when set, sign-up needs it |
+| `STUDY_MIN_FREE_MB` | Friends-mode uploads stop below this much free disk (default 2048) |
 
 ## Deploy to a home server
 
@@ -107,6 +113,20 @@ bash deploy/setup_friends.sh                      # one-time: friends site on po
 ```
 
 For HTTPS you can put a domain behind Caddy (`deploy/Caddyfile.example`). The other option is a free [loophole](https://loophole.cloud) tunnel (`deploy/studyhub-tunnel.service.example`). The service template is `deploy/studyhub.service.example`.
+
+## Security
+
+- The app listens on `127.0.0.1` only; the public address comes from an HTTPS tunnel or reverse proxy.
+- Passwords use PBKDF2. Sessions are random tokens stored hashed, in `HttpOnly`, `Secure`, `SameSite=Strict` cookies. API/MCP tokens are stored as SHA-256 hashes.
+- Login and sign-up are rate-limited per client address, per username and globally. Behind a local proxy, only the address the proxy adds last to `X-Forwarded-For` is trusted.
+- Headers: a strict CSP (no inline scripts, no third-party hosts), HSTS, `X-Frame-Options: DENY`, `nosniff`, COOP and a Permissions-Policy.
+- Writes are refused when they come from another origin. Uploads are checked for path traversal and symlinks. Documents other than images, PDF and media are served as downloads.
+- Friends mode:
+  - Every user's data lives in their own folder and database.
+  - Set `STUDY_SIGNUP_CODE` to make sign-up need an invite code.
+  - `STUDY_USER_QUOTA_MB` limits each user's storage, and uploads stop when the disk has less than `STUDY_MIN_FREE_MB` free.
+
+Found a security problem? Please open a private security advisory on GitHub instead of a public issue.
 
 ## Never commit
 
