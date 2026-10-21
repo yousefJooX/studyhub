@@ -66,7 +66,7 @@ function loginView(mode='login') {
   const switcher = multi && AUTH.signup ? `<p class="auth-switch">${signup ? 'عندك حساب؟' : 'أول مرة هنا؟'} <button type="button" class="link-button" data-auth-mode="${signup ? 'login' : 'signup'}">${signup ? 'سجّل دخول' : 'اعمل حساب'}</button></p>` : '';
   const fields = signup
     ? `<label for="su-name">اسمك</label><input id="su-name" name="name" autocomplete="name" maxlength="60" required autofocus>
-       <label for="su-user">اسم المستخدم</label><input id="su-user" name="username" dir="ltr" autocomplete="username" pattern="[A-Za-z0-9_.\-]{3,32}" minlength="3" maxlength="32" required>
+       <label for="su-user">اسم المستخدم</label><input id="su-user" name="username" dir="ltr" autocomplete="username" pattern="[A-Za-z0-9_.\\-]{3,32}" minlength="3" maxlength="32" required>
        <small class="muted">إنجليزي وأرقام بس، من ٣ حروف</small>
        <label for="su-pass">الباسورد</label><input id="su-pass" name="password" type="password" autocomplete="new-password" minlength="8" required>${AUTH.invite ? `
        <label for="su-code">كود الدعوة</label><input id="su-code" name="code" dir="ltr" autocomplete="off" required>` : ''}

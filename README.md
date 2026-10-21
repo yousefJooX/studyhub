@@ -124,6 +124,19 @@ bash deploy/setup_friends.sh                      # one-time: friends site on po
 
 For HTTPS you can put a domain behind Caddy (`deploy/Caddyfile.example`). The other option is a free [loophole](https://loophole.cloud) tunnel (`deploy/studyhub-tunnel.service.example`). The service template is `deploy/studyhub.service.example`.
 
+## Tests
+
+```bash
+cd ~/studyhub                                   # the folder that contains the studyhub package
+.venv/bin/pip install -r studyhub/requirements-dev.txt && .venv/bin/playwright install chromium
+.venv/bin/python -m pytest studyhub/tests -q     # 55 tests, about 40 seconds
+```
+
+- **API**: every endpoint in both modes (personal and friends): accounts, isolation between users, the faculty code, quotas, timers, weekly review, vault, voices, push, archive access, own AI keys, the board sync (against captured HNU Board pages) and the MCP tools.
+- **Browser** (Playwright): every page and dialog in Arabic and English, on desktop and phone, for students inside and outside the faculty. Any JavaScript error fails the test.
+- **Unit**: Markdown/XSS, board parsers, encryption, rate-limit keys and week boundaries. Deploy scripts get a syntax check and the repo gets a check for leaked secrets.
+- `tests/security_check.py` runs 30 attack checks against a running local instance.
+
 ## Security
 
 - The app listens on `127.0.0.1` only; the public address comes from an HTTPS tunnel or reverse proxy.

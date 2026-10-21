@@ -247,8 +247,10 @@ def invite_required():
 def signup(body: Signup, request: Request, response: Response):
     if not signup_open():
         raise HTTPException(403, 'التسجيل مقفول حاليًا')
-    throttle('signup:' + client_ip(request), 5, 3600)
-    throttle('signup:all', 30, 3600)  # also cap total sign-ups per hour, whatever the address
+    # Classmates often share one address (campus Wi-Fi), so the per-address limit is generous;
+    # the site-wide cap still stops a bot from filling the server.
+    throttle('signup:' + client_ip(request), int(os.environ.get('STUDY_SIGNUPS_PER_IP_HOUR', '20')), 3600)
+    throttle('signup:all', int(os.environ.get('STUDY_SIGNUPS_PER_HOUR', '100')), 3600)
     if invite_required() and not hmac.compare_digest(body.code.strip().encode(), os.environ['STUDY_SIGNUP_CODE'].encode()):
         raise HTTPException(403, 'كود الدعوة غلط. اطلبه من صاحب الموقع')
     college = body.college or bool(body.college_code.strip())

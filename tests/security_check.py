@@ -227,7 +227,7 @@ codes = [requests.post(B + '/api/login', json={'username': 'alice', 'password': 
 check('Password guessing is blocked after 10 tries (even from many IPs)', 429 in codes and codes.index(429) <= 10, str(codes))
 codes = [requests.post(B + '/api/login', json={'username': f'user{i}', 'password': 'x'}, headers={'X-Forwarded-For': f'1.2.3.{i}, 10.7.7.7'}).status_code for i in range(18)]
 check('Faking X-Forwarded-For does not get around the per-IP login limit', 429 in codes, str(codes))
-codes = [requests.post(B + '/api/signup', json={'name': 'x', 'username': f'spam{i}', 'password': 'Sup3r-secret-pass'}, headers={'X-Forwarded-For': f'5.5.5.{i}'}).status_code for i in range(40)]
+codes = [requests.post(B + '/api/signup', json={'name': 'x', 'username': f'spam{i}', 'password': 'Sup3r-secret-pass'}, headers={'X-Forwarded-For': f'5.5.{i // 250}.{i % 250}'}).status_code for i in range(110)]
 check('Mass sign-up bots are stopped by the hourly cap', 429 in codes, f'{codes.count(200)} accounts created before the cap')
 
 # ---------- DoS
