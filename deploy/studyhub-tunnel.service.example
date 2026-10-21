@@ -1,0 +1,23 @@
+# Optional: free HTTPS address with loophole (https://loophole.cloud) instead of a domain + Caddy.
+# Replace HOSTNAME (gives https://HOSTNAME.loophole.site) and the key path.
+[Unit]
+Description=HTTPS tunnel for StudyHub
+After=network-online.target studyhub.service
+Wants=network-online.target
+Requires=studyhub.service
+
+[Service]
+Type=simple
+User=loophole
+WorkingDirectory=/var/lib/loophole
+ExecStart=/usr/local/bin/loophole http 8091 --hostname HOSTNAME --identity-file /var/lib/loophole/.loophole/.ssh/studyhub_rsa --disable-old-ciphers --disable-proxy-error-page
+KillSignal=SIGINT
+TimeoutStopSec=10
+Restart=on-failure
+RestartSec=15
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

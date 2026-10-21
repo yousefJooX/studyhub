@@ -1,0 +1,203 @@
+"""In-app assistant: chat with an OpenAI-compatible model (Groq, Gemini, OpenRouter, Ollama…)
+that can use the same StudyHub tools as the MCP server.
+
+Config (data/config.json, set with `python -m studyhub llm`):
+  STUDY_LLM_API_KEY   provider API key (empty for a local Ollama)
+  STUDY_LLM_BASE_URL  default https://api.groq.com/openai/v1
+  STUDY_LLM_MODEL     default llama-3.3-70b-versatile
+"""
+import json
+import os
+import time
+import urllib.error
+import urllib.request
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+
+from . import app as core
+from .mcp_server import CAIRO, TOOL_INDEX, TOOLS
+
+router = APIRouter()
+MAX_ROUNDS = 8
+DEFAULT_BASE = 'https://api.groq.com/openai/v1'
+DEFAULT_MODEL = 'llama-3.3-70b-versatile'
+
+
+class ChatMessage(BaseModel):
+    role: str = Field(pattern='^(user|assistant)$')
+    content: str = Field(max_length=8000)
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage] = Field(min_length=1, max_length=40)
+    lang: str = Field(default='ar', pattern='^(ar|en)$')
+
+
+def settings():
+    return (os.environ.get('STUDY_LLM_BASE_URL', DEFAULT_BASE).rstrip('/'),
+            os.environ.get('STUDY_LLM_API_KEY', ''),
+            os.environ.get('STUDY_LLM_MODEL', DEFAULT_MODEL))
+
+
+def providers():
+    """Primary model, then an optional fallback used when the first is rate-limited or down."""
+    found = []
+    for prefix in ('STUDY_LLM', 'STUDY_LLM_FALLBACK'):
+        base = os.environ.get(prefix + '_BASE_URL', DEFAULT_BASE if prefix == 'STUDY_LLM' else '').rstrip('/')
+        key = os.environ.get(prefix + '_API_KEY', '')
+        model = os.environ.get(prefix + '_MODEL', DEFAULT_MODEL if prefix == 'STUDY_LLM' else '')
+        local = 'localhost' in base or '127.0.0.1' in base
+        if base and model and (key or local):
+            found.append((base, key, model))
+    return found
+
+
+def system_prompt(lang):
+    now = datetime.now(CAIRO)
+    courses = core.rows('courses')
+    course_lines = '\n'.join(f'- {c["title"]} ({c.get("kind", "")})' for c in sorted(courses, key=lambda c: c['title'])) or '- (no courses yet)'
+    language = ('Reply in casual Egyptian Arabic, keeping technical terms in English.' if lang == 'ar'
+                else 'Reply in English.')
+    owner = core.current_user_public().get('name') or 'the user'
+    return f"""You are the assistant inside StudyHub, the personal study workspace of {owner} (a university student).
+Now: {now.strftime('%A %Y-%m-%d %H:%M')} Africa/Cairo. Study weeks run Saturday to Friday.
+{language} Be short and practical.
+
+His courses:
+{course_lines}
+
+How to work:
+- Use the tools to read or change real data. Never invent tasks, deadlines or note content.
+- When they list several things to do ("عندي كذا وكذا وآخر معاد كذا"), create one task per item with create_task.
+  Map each item to the right course by name (partial names are fine). Turn relative dates (بكرة، السبت الجاي، آخر الأسبوع)
+  into real dates from today's date. If an item clearly belongs to a course that does not exist, create the course first.
+- Lecture/section/lab times they give go into the weekly timetable with create_slot.
+- For questions about course material, search_notes then read_note, and mention which note you used.
+- If something important is ambiguous (which course, which date), ask one short question instead of guessing.
+- After changing data, finish with a short list of exactly what you created or changed."""
+
+
+def openai_tools():
+    return [{'type': 'function', 'function': {'name': t['name'], 'description': t['description'],
+                                               'parameters': t['inputSchema']}} for t in TOOLS]
+
+
+def request_model(base, key, model, messages):
+    body = json.dumps({'model': model, 'messages': messages, 'tools': openai_tools(),
+                       'tool_choice': 'auto', 'temperature': 0.2}).encode()
+    request = urllib.request.Request(base + '/chat/completions', data=body, method='POST', headers={
+        'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key, 'User-Agent': 'StudyHub/1.0'})
+    with urllib.request.urlopen(request, timeout=90) as response:
+        return json.loads(response.read())['choices'][0]['message']
+
+
+def call_model(messages):
+    options = providers()
+    if not options:
+        raise HTTPException(503, 'المساعد محتاج API key. شغّل على السيرفر: python -m studyhub llm')
+    last = None
+    for base, key, model in options:
+        for attempt in range(3):
+            try:
+                return request_model(base, key, model, messages)
+            except urllib.error.HTTPError as error:
+                if error.code in (429, 500, 502, 503, 504) and attempt < 2:
+                    time.sleep(1.5 * (attempt + 1))  # busy / overloaded: short retry before falling back
+                    continue
+                last = model_error(error, model)
+                break
+            except (urllib.error.URLError, TimeoutError, KeyError, ValueError) as error:
+                last = (502, f'مش قادر أوصل لمزوّد الموديل: {error}')
+                break
+    raise HTTPException(*last)
+
+
+def model_error(error, model):
+    raw = error.read().decode(errors='replace')
+    try:
+        parsed = json.loads(raw)
+        parsed = parsed[0] if isinstance(parsed, list) and parsed else parsed
+        detail = (parsed.get('error') or {}).get('message') or raw
+    except (ValueError, AttributeError):
+        detail = raw
+    if error.code == 429:
+        return 429, f'{model}: وصلت للحد المجاني دلوقتي. استنى شوية وجرب تاني.'
+    if error.code == 503:
+        return 503, f'{model}: الموديل عليه ضغط دلوقتي. جرّب كمان دقيقة، أو ضيف موديل احتياطي.'
+    return 502, f'{model} ({error.code}): ' + detail[:240]
+
+
+def run_tool(name, raw_args):
+    tool = TOOL_INDEX.get(name)
+    if not tool:
+        return {'ok': False, 'error': f'Unknown tool {name}'}, {}
+    try:
+        args = json.loads(raw_args or '{}') if isinstance(raw_args, str) else (raw_args or {})
+    except ValueError:
+        return {'ok': False, 'error': 'Arguments were not valid JSON'}, {}
+    try:
+        return {'ok': True, 'result': tool['handler'](args)}, args
+    except HTTPException as error:
+        return {'ok': False, 'error': error.detail if isinstance(error.detail, str) else 'Rejected'}, args
+    except (ValueError, KeyError, TypeError) as error:
+        return {'ok': False, 'error': str(error) or error.__class__.__name__}, args
+
+
+def describe(name, args, outcome):
+    """Short human line for the chat UI about a write action."""
+    if not outcome.get('ok'):
+        return None
+    result = outcome['result']
+    item = result.get('created') or result.get('updated') or result.get('exists') or {}
+    title = item.get('title', '')
+    labels = {'create_task': 'مهمة جديدة', 'update_task': 'اتعدّلت مهمة', 'create_note': 'نوت جديدة',
+              'create_course': 'مادة جديدة' if 'created' in result else 'المادة موجودة', 'create_slot': 'ميعاد في الجدول'}
+    if name not in labels:
+        return None
+    extra = ''
+    if name == 'create_task' and item.get('due'):
+        extra = f" · {item['due']}"
+    if name == 'create_slot':
+        extra = f" · {item.get('day', '')} {item.get('start', '')}–{item.get('end', '')}"
+    return {'tool': name, 'label': labels[name], 'title': title, 'detail': (item.get('course') or '') + extra}
+
+
+@router.post('/api/assistant', dependencies=[Depends(core.authorized)])
+def assistant(body: ChatRequest):
+    from . import accounts
+    if accounts.enabled():  # shared key: keep each user to a daily budget
+        cap = int(os.environ.get('STUDY_ASSISTANT_DAILY', '40'))
+        today = datetime.now(CAIRO).date().isoformat()
+        usage = core.setting('assistant_usage', {})
+        used = usage.get('count', 0) if usage.get('date') == today else 0
+        if used >= cap:
+            raise HTTPException(429, f'خلصت رسايل المساعد النهارده ({cap}). جرّب بكرة، أو استخدم Claude عن طريق MCP من الإعدادات')
+        core.set_setting('assistant_usage', {'date': today, 'count': used + 1})
+    messages = [{'role': 'system', 'content': system_prompt(body.lang)}]
+    messages += [{'role': m.role, 'content': m.content} for m in body.messages[-20:]]
+    actions, writes = [], False
+    for _ in range(MAX_ROUNDS):
+        reply = call_model(messages)
+        calls = reply.get('tool_calls') or []
+        if not calls:
+            return {'reply': (reply.get('content') or '').strip(), 'actions': actions, 'changed': writes}
+        messages.append({'role': 'assistant', 'content': reply.get('content') or '', 'tool_calls': calls})
+        for call in calls:
+            name = call['function']['name']
+            outcome, args = run_tool(name, call['function'].get('arguments'))
+            action = describe(name, args, outcome)
+            if action:
+                actions.append(action)
+                writes = True
+            text = json.dumps(outcome, ensure_ascii=False)
+            messages.append({'role': 'tool', 'tool_call_id': call['id'], 'content': text[:12000]})
+    return {'reply': 'وقفت قبل ما أخلص لأن الطلب محتاج خطوات كتير. قسّمه على رسالتين.', 'actions': actions, 'changed': writes}
+
+
+@router.get('/api/assistant/status', dependencies=[Depends(core.authorized)])
+def assistant_status():
+    options = providers()
+    return {'configured': bool(options), 'model': options[0][2] if options else '',
+            'fallback': options[1][2] if len(options) > 1 else ''}

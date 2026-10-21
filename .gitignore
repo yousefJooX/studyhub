@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+_backup/
+data/
+*.sqlite3
+*.sqlite3-*
+config.json
+deploy/deploy.env
+*.pem
+*.key
+*.tar.gz
+# private deploy files kept only on the owner's machine
+deploy/hnu-studyhub*.service
+deploy/studyhub-vault-sync.*

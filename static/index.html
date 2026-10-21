@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#F7F6F3"><meta name="description" content="موادك، نوتسك، وخطتك الدراسية في مكان واحد">
+  <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="مساحتي">
+  <title>مساحتي — StudyHub</title>
+  <link rel="icon" href="/static/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/static/icon-192.png">
+  <link rel="manifest" href="/manifest.webmanifest"><link rel="stylesheet" href="/static/app.css">
+  <script src="/static/i18n.js"></script><script src="/static/http.js" defer></script><script src="/static/reader.js" defer></script><script src="/static/app.js" defer></script>
+</head>
+<body>
+  <div id="app"><div class="boot">مساحتي الدراسية<span>بنجهّز مساحتك…</span></div></div>
+  <dialog id="modal"><div id="modal-content"></div></dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <div id="voice-banner" class="voice-banner" role="status" hidden></div>
+  <button type="button" id="assistant-fab" class="assistant-fab" data-assistant-open hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 4.6L18 9.4l-4.2 1.8L12 16l-1.8-4.8L6 9.4l4.2-1.8zM18.5 15l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"/></svg><span>اسأل المساعد</span></button>
+  <aside id="assistant" class="assistant" hidden aria-label="المساعد">
+    <header class="as-head"><div><b>المساعد</b><small id="assistant-model"></small></div><div class="as-head-actions"><button type="button" class="as-icon" data-assistant-clear aria-label="محادثة جديدة" title="محادثة جديدة"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button><button type="button" class="as-icon" data-assistant-close aria-label="إغلاق"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div></header>
+    <div id="assistant-log" class="assistant-log" aria-live="polite"></div>
+    <form id="assistant-form" class="as-form"><label class="sr-only" for="assistant-q">رسالتك للمساعد</label><textarea id="assistant-q" name="q" rows="2" placeholder="مثلاً: عندي تقرير لاب ROB 310 قبل الأحد…"></textarea><button type="submit" class="button">إرسال</button></form>
+  </aside>
+</body>
+</html>

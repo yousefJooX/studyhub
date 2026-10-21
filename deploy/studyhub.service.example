@@ -1,0 +1,28 @@
+# Example systemd unit for the personal (single-owner) site.
+# Replace USER and /home/USER/studyhub, then:
+#   sudo cp studyhub.service.example /etc/systemd/system/studyhub.service
+#   sudo systemctl enable --now studyhub
+[Unit]
+Description=StudyHub web app
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=USER
+WorkingDirectory=/home/USER/studyhub
+Environment=STUDY_CONFIG_FILE=/home/USER/studyhub/data/config.json
+Environment=STUDY_SECURE_COOKIE=true
+Environment=STUDY_PUBLIC_ORIGIN=https://study.example.com
+ExecStart=/home/USER/studyhub/.venv/bin/python -m studyhub serve --host 127.0.0.1 --port 8091
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/USER/studyhub/data
+
+[Install]
+WantedBy=multi-user.target

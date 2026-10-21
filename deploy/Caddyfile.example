@@ -1,0 +1,8 @@
+# Replace with the domain that points to your server, or use a private HTTPS
+# tunnel/VPN endpoint. Do not expose an unauthenticated archive API.
+study.example.com {
+    reverse_proxy 127.0.0.1:8091
+    request_body {
+        max_size 512MB
+    }
+}
