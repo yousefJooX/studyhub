@@ -13,11 +13,17 @@ The friends site is live at **https://study-joox-friends.loophole.site**. Open i
 
 ## Video walkthrough
 
-https://github.com/user-attachments/assets/26c5a38d-f465-41d8-87da-a19e826c9ecc
+### بالعربي (الموقع بالعربي)
 
-This 3-minute walkthrough (English captions) covers everything a new user does: signing up, adding courses, the timetable, tasks and deadlines, the assistant, the focus timer, Obsidian notes, the weekly review, voice reminders, Claude and installing it on a phone.
+https://github.com/user-attachments/assets/8a0ddaf6-06a4-4c80-9dca-c3212424f286
 
-You can also download [walkthrough.mp4](docs/walkthrough.mp4), and there are [English subtitles (.srt)](docs/walkthrough.en.srt) and a [written transcript](docs/walkthrough-transcript.md).
+### In English (English interface)
+
+https://github.com/user-attachments/assets/7cd01743-6caf-45e6-83c1-002fdad53eaa
+
+Each video is about 3 minutes. It covers signing up with the faculty code and choosing your level, courses, the timetable, tasks and deadlines, college tasks from the class channel, getting a free Groq key for the assistant, the focus timer, Obsidian notes, the weekly review, voice reminders, Claude and installing the site on a phone.
+
+Downloads: [Arabic video](docs/walkthrough-ar.mp4) · [English video](docs/walkthrough-en.mp4). Subtitles: [Arabic .srt](docs/walkthrough-ar.srt) · [English .srt](docs/walkthrough-en.srt). Transcripts: [Arabic](docs/walkthrough-transcript-ar.md) · [English](docs/walkthrough-transcript-en.md).
 
 ## Features
 
