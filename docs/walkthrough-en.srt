@@ -1,0 +1,126 @@
+1
+00:00:00,000 --> 00:00:04,333
+StudyHub: a calm place for your courses, tasks, timetable and notes.
+
+2
+00:00:06,733 --> 00:00:15,233
+Start by creating an account
+Your data is private. Nobody else can see it
+
+3
+00:00:15,933 --> 00:00:24,433
+From the faculty? Enter the faculty code
+It is shared in your class group and unlocks the archive and your level’s tasks
+
+4
+00:00:25,867 --> 00:00:31,100
+This is your overview
+Your day at a glance: lectures, tasks and upcoming deadlines
+
+5
+00:00:31,200 --> 00:00:39,700
+Add your courses
+Open Courses, click add and type the course name
+
+6
+00:00:43,267 --> 00:00:49,200
+Add the rest the same way
+College courses, or any course outside college
+
+7
+00:00:49,300 --> 00:00:54,200
+Your weekly timetable
+Lectures, sections, labs and your own study sessions
+
+8
+00:00:54,300 --> 00:00:59,233
+Tasks and deadlines
+Each task has a course, a day to do it and a deadline
+
+9
+00:00:59,333 --> 00:01:07,500
+You get reminded before the deadline
+1 day, 12 hours and 1 hour before, on your phone and laptop
+
+10
+00:01:07,600 --> 00:01:15,300
+College tasks arrive on their own
+Every assignment posted on your class channel is added for your level and program
+
+11
+00:01:15,367 --> 00:01:21,000
+These came from the class channel
+With deadline, course and a link to the post · data from HNU Board by Moustafa Sayed
+
+12
+00:01:21,100 --> 00:01:25,667
+The AI assistant
+The first time, it asks for a free API key. That takes two minutes
+
+13
+00:01:25,767 --> 00:01:29,867
+Get a free key from Groq
+Open console.groq.com/keys → Create API Key → copy the key starting with gsk_
+
+14
+00:01:29,967 --> 00:01:38,467
+Paste it here and click Save and test
+The site checks it works and stores it encrypted. Nobody can see it
+
+15
+00:01:39,400 --> 00:01:46,267
+Write like you text a friend
+It adds the tasks and slots and links them to the right course
+
+16
+00:01:51,467 --> 00:01:59,400
+Done, all added
+Two tasks with deadlines, and the lab in your timetable
+
+17
+00:01:59,467 --> 00:02:07,967
+Focus timer
+Open a task and press start. Your study time is saved on its own
+
+18
+00:02:10,500 --> 00:02:16,967
+Bring your Obsidian notes
+Upload your notes folder or a ZIP of it in Settings
+
+19
+00:02:17,067 --> 00:02:21,100
+The library
+Folders open and close like in Obsidian
+
+20
+00:02:21,200 --> 00:02:27,833
+Notes look clean
+Math, code, callouts, tables and diagrams all render
+
+21
+00:02:27,933 --> 00:02:36,433
+Weekly review
+Hours studied, time per course, finished tasks and your streak
+
+22
+00:02:36,667 --> 00:02:40,433
+Reminders in your own voice
+Record a clip for each stage and it plays with the reminder
+
+23
+00:02:40,533 --> 00:02:44,633
+Use Claude with it
+Create a connector here, then ask Claude about your tasks and notes
+
+24
+00:02:44,733 --> 00:02:51,900
+Arabic or English
+On your phone: open the link and choose Add to Home screen
+
+25
+00:02:57,767 --> 00:03:07,100
+Get a free key for the assistant from Groq: open console.groq.com/keys, sign in with Google, click Create API Key, copy the key that starts with gsk_ and paste it in Settings → AI assistant.
+
+26
+00:03:07,767 --> 00:03:14,100
+Happy studying! Website: study-joox-friends.loophole.site · Code: github.com/yousefJooX/studyhub
