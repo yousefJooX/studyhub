@@ -15,7 +15,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
-from .app import authorized, data_root, database, setting, set_setting
+from .app import authorized, data_root, database, setting, set_setting, settle_timers
 
 router = APIRouter(prefix='/api/notifications/push', dependencies=[Depends(authorized)])
 key_lock = threading.Lock()
@@ -243,12 +243,14 @@ async def reminder_loop():
                 for user in await asyncio.to_thread(accounts.all_users):
                     token = accounts.CURRENT_USER.set(user)
                     try:
+                        await asyncio.to_thread(settle_timers)
                         await asyncio.to_thread(run_once)
                     except Exception as error:
                         logging.warning('StudyHub reminders for a user: %s', type(error).__name__)
                     finally:
                         accounts.CURRENT_USER.reset(token)
             else:
+                await asyncio.to_thread(settle_timers)
                 await asyncio.to_thread(run_once)
         except Exception as error:
             logging.warning('StudyHub reminder worker: %s', type(error).__name__)

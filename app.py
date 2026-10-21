@@ -442,6 +442,10 @@ def save_entry(table, body, entry_id=None):
             if value.get('planned_time') and not value.get('planned_date'):
                 raise HTTPException(400, 'حدد يوم التنفيذ مع وقت البداية')
             timer = old.get('timer', {})
+            if timer.get('state') == 'running' and timer.get('ends_at', 0) <= time.time():
+                # The session already ran out: save its minutes before anything below resets the timer.
+                timer = log_focus(db, old, timer, time.time()) | {'state': 'finished', 'remaining_seconds': 0, 'ends_at': None}
+                value['timer'] = timer
             if value.get('duration_minutes', 25) != old.get('duration_minutes', 25):
                 if timer.get('state') == 'running' and timer.get('ends_at', 0) > time.time():
                     raise HTTPException(409, 'أوقف أو صفّر التايمر قبل تغيير مدته')
@@ -493,6 +497,21 @@ def log_focus(db, task, timer, until):
             'task_id': task['id'], 'course_id': task.get('course_id', ''), 'start': start, 'end': end,
             'minutes': round((end - start) / 60, 1)}, ensure_ascii=False)))
     return timer | {'segment_start': end}
+
+
+def settle_timers():
+    """Save the minutes of every timer that ran out on its own, so finished sessions are never lost
+    (called by the background worker every few seconds)."""
+    now = time.time()
+    with database() as db:
+        db.execute('BEGIN IMMEDIATE')
+        for row in db.execute('SELECT id,data FROM tasks').fetchall():
+            task = json.loads(row['data'])
+            timer = task.get('timer') or {}
+            if timer.get('state') == 'running' and timer.get('ends_at') and timer['ends_at'] <= now:
+                timer = log_focus(db, task, timer, now) | {'state': 'finished', 'remaining_seconds': 0,
+                                                           'finished_at': timer['ends_at'], 'ends_at': None}
+                db.execute('UPDATE tasks SET data=? WHERE id=?', (json.dumps(task | {'timer': timer}, ensure_ascii=False), row['id']))
 
 
 @app.post('/api/tasks/{entry_id}/timer', dependencies=[Depends(authorized)])
