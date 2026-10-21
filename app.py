@@ -953,6 +953,9 @@ def manifest():
 
 app.mount('/static', StaticFiles(directory=STATIC), name='static')
 
+from .guard import RequestGuard  # noqa: E402
+app.add_middleware(RequestGuard)
+
 from .reminders import router as reminders_router
 app.include_router(reminders_router)
 

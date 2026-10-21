@@ -118,6 +118,7 @@ For HTTPS you can put a domain behind Caddy (`deploy/Caddyfile.example`). The ot
 
 - The app listens on `127.0.0.1` only; the public address comes from an HTTPS tunnel or reverse proxy.
 - Passwords use PBKDF2. Sessions are random tokens stored hashed, in `HttpOnly`, `Secure`, `SameSite=Strict` cookies. API/MCP tokens are stored as SHA-256 hashes.
+- Every client is rate-limited (`STUDY_RATE_LIMIT` requests per minute, default 300). Request bodies are capped at `STUDY_MAX_BODY_MB` (default 4) except on the authenticated upload routes.
 - Login and sign-up are rate-limited per client address, per username and globally. Behind a local proxy, only the address the proxy adds last to `X-Forwarded-For` is trusted.
 - Headers: a strict CSP (no inline scripts, no third-party hosts), HSTS, `X-Frame-Options: DENY`, `nosniff`, COOP and a Permissions-Policy.
 - Writes are refused when they come from another origin. Uploads are checked for path traversal and symlinks. Documents other than images, PDF and media are served as downloads.
@@ -125,6 +126,8 @@ For HTTPS you can put a domain behind Caddy (`deploy/Caddyfile.example`). The ot
   - Every user's data lives in their own folder and database.
   - Set `STUDY_SIGNUP_CODE` to make sign-up need an invite code.
   - `STUDY_USER_QUOTA_MB` limits each user's storage, and uploads stop when the disk has less than `STUDY_MIN_FREE_MB` free.
+
+`tests/security_check.py` runs 30 attack checks against a throwaway local instance: auth bypass, SQL injection, XSS, path traversal, IDOR, malicious uploads, zip-slip, zip bombs, CSRF, brute force, oversized requests and request floods. See the top of the file for how to run it.
 
 Found a security problem? Please open a private security advisory on GitHub instead of a public issue.
 
