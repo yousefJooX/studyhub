@@ -18,7 +18,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from fastapi import HTTPException, Request, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 CURRENT_USER = contextvars.ContextVar('studyhub_user', default=None)
 USERNAME = re.compile(r'^[a-z0-9_.-]{3,32}$')
@@ -223,6 +223,11 @@ class Signup(BaseModel):
     college_code: str = Field(default='', max_length=200)
     level: int | None = None
     program: str = Field(default='', max_length=10)
+
+    @field_validator('level', mode='before')
+    @classmethod
+    def empty_level(cls, value):
+        return None if value in ('', None) else value
 
 
 class AccountLogin(BaseModel):

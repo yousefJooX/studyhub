@@ -320,7 +320,7 @@ function weeklyView() {
 function archiveView() {
   if (!archive) return '<div class="loading">بنقرأ أرشيف الكلية…</div>';
   const years = [...new Set(archive.accounts.map(a=>String(a.year)))].sort();
-  if (!years.includes(archiveYear)) archiveYear = years[0] || '';
+  if (!years.includes(archiveYear)) archiveYear = years.includes(String(S.college?.level||'')) ? String(S.college.level) : (years[0] || '');
   const departments = [...new Set(archive.accounts.filter(a=>String(a.year)===archiveYear).map(a=>a.department))];
   if (!departments.includes(archiveDepartment)) archiveDepartment = departments.find(d=>/robot|روبوت|إنسان/i.test(d)) || departments[0] || '';
   const terms = [...new Set(archive.accounts.filter(a=>String(a.year)===archiveYear && a.department===archiveDepartment).map(a=>String(a.term)))].sort();
@@ -613,7 +613,7 @@ document.addEventListener('submit',async event=>{
   const form=event.target;event.preventDefault();const button=form.querySelector('[type="submit"]');button.disabled=true;
   try {
     if(form.id==='login-form') {const f=new FormData(form);await api('/api/login','POST',{username:f.get('username')||'',password:f.get('password')});await refresh(false);page='home';return await renderPage();}
-    if(form.id==='signup-form') {await api('/api/signup','POST',Object.fromEntries(new FormData(form)));await refresh(false);page='home';toast('أهلًا بيك! ابدأ بإضافة موادك');return await renderPage();}
+    if(form.id==='signup-form') {const body=Object.fromEntries(new FormData(form)); if(!body.college_code&&!body.college){delete body.level;delete body.program;} await api('/api/signup','POST',body);await refresh(false);page='home';toast('أهلًا بيك! ابدأ بإضافة موادك');return await renderPage();}
     if(form.id==='password-form') {await api('/api/account/password','POST',Object.fromEntries(new FormData(form)));toast('اتغيّر الباسورد، سجّل دخول تاني');return loginView();}
     const data=Object.fromEntries(new FormData(form));
     const useDefault=data.use_default_duration==='on';delete data.use_default_duration;
