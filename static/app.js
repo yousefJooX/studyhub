@@ -491,7 +491,7 @@ document.addEventListener('click',async event=>{
     if(b.dataset.layout) {libraryLayout=b.dataset.layout;try{localStorage.setItem('library-layout',libraryLayout);}catch{}return await renderPage();}
     if(b.dataset.page) {const target=b.dataset.scroll; if(target)Assistant.close(); await navigate(b.dataset.page); if(target)document.getElementById(target)?.scrollIntoView({behavior:'smooth',block:'start'}); return;}
     if(b.dataset.action==='assistant-open-now') return Assistant.open();
-    if(b.dataset.action==='board-sync') {b.disabled=true;const r=await api('/api/board/sync','POST',{});boardInfo=await api('/api/board');await refresh();toast(r.added?`اتضاف ${r.added} تاسك من الكلية`:'مفيش تاسكات جديدة');return;}
+    if(b.dataset.action==='board-sync') {b.disabled=true;const r=await api('/api/board/sync','POST',{});boardInfo=await api('/api/board');await refresh();toast(r.added?L(`اتضاف ${r.added} تاسك من الكلية`,`${r.added} college task${r.added>1?'s':''} added`):L('مفيش تاسكات جديدة','No new tasks'));return;}
     if(b.dataset.action==='delete-ai-key') {b.disabled=true;await api('/api/assistant/key','DELETE');aiKey=await api('/api/assistant/key');Assistant.reset();toast('اتمسح الـ key');return await renderPage();}
     if(b.dataset.course) {activeCourse=b.dataset.course;page='course';return await renderPage();}
     if(b.dataset.kind) {kind=b.dataset.kind;filePage=0;return await renderPage();}
@@ -638,7 +638,7 @@ document.addEventListener('submit',async event=>{
       await api('/api/tasks','POST',{title:data.title,planned_date:planDay});
     }else if(form.id==='mount-form')await api('/api/vault/mounts','POST',data);
     else if(form.id==='import-form')await api('/api/archive/import','POST',data);
-    else if(form.id==='ai-key-form'){const r=await api('/api/assistant/key','POST',data);aiKey=await api('/api/assistant/key');Assistant.reset();await renderPage();toast('الـ key شغال ✓ المساعد جاهز ('+r.model+')');return;}
+    else if(form.id==='ai-key-form'){const r=await api('/api/assistant/key','POST',data);aiKey=await api('/api/assistant/key');Assistant.reset();await renderPage();toast(L('الـ key شغال ✓ المساعد جاهز (','Key works ✓ The assistant is ready (')+r.model+')');return;}
     else if(form.id==='profile-form'){data.level=Number(data.level);await api('/api/profile/college','PUT',data);await refresh();toast('اتحفظت سنتك');return;}
     else if(form.id==='college-form'){await api('/api/account/college','POST',data);account=await api('/api/account');await refresh();toast('أرشيف الكلية اتفعّل عندك');return;}
     else return;
@@ -895,7 +895,7 @@ function collegeProfileView() {
     ${boardInfo && boardInfo.available ? `<h3>تاسكات الكلية من قناة الدفعة</h3>
     <p data-no-i18n>${L('أي assignment بينزل على قنوات الكلية لسنتك وبرنامجك بيتضاف لمهامك لوحده، بالديدلاين والمادة ولينك البوست. البيانات جاية من','Every assignment posted on the faculty channels for your level and program is added to your tasks automatically, with the deadline, the course and a link to the post. The data comes from')} <a href="https://github.com/moustafasayed068/hnu-board" target="_blank" rel="noopener noreferrer">HNU Board</a> ${L('اللي عمله مصطفى سيد.','by Moustafa Sayed.')}</p>
     <label class="checkbox-option"><input type="checkbox" data-board-toggle ${boardInfo.enabled?'checked':''}> ضيف تاسكات الكلية لمهامي أوتوماتيك</label>
-    <div class="toolbar">${act('board-sync','زامن دلوقتي','button secondary')}<span class="small muted">${boardInfo.last ? 'آخر مزامنة: '+dateFormat(new Date(boardInfo.last*1000),{weekday:'short',hour:'2-digit',minute:'2-digit'}) : 'لسه متزامنتش'}${boardInfo.imported ? ' · '+boardInfo.imported+' بوست' : ''}${boardInfo.error ? ' · آخر محاولة فشلت' : ''}</span></div>` : ''}</section>`;
+    <div class="toolbar">${act('board-sync','زامن دلوقتي','button secondary')}<span class="small muted" data-no-i18n>${boardInfo.last ? L('آخر مزامنة: ','Last sync: ')+dateFormat(new Date(boardInfo.last*1000),{weekday:'short',hour:'2-digit',minute:'2-digit'}) : L('لسه متزامنتش','Not synced yet')}${boardInfo.imported ? ' · '+boardInfo.imported+L(' بوست',' posts') : ''}${boardInfo.error ? L(' · آخر محاولة فشلت',' · last attempt failed') : ''}</span></div>` : ''}</section>`;
 }
 function vaultUploadView() {
   return `<section class="settings-block"><h2>فولدرات Obsidian بتاعتك</h2>
@@ -919,7 +919,7 @@ document.addEventListener('change', async event => {
     if (zipInput && zipInput.files[0]) {
       const file = zipInput.files[0]; progress.textContent = `بيرفع ${file.name}…`;
       const result = await uploadBlob(`/api/vault/upload-zip?name=${encodeURIComponent(file.name)}`, file);
-      toast(`اترفع ${result.files} ملف في ${result.folder}`);
+      toast(L(`اترفع ${result.files} ملف في ${result.folder}`,`Uploaded ${result.files} files to ${result.folder}`));
     } else if (folderInput && folderInput.files.length) {
       const files = [...folderInput.files].filter(f => { const p = f.webkitRelativePath || f.name; return !p.split('/').some(x => x.startsWith('.')) && VAULT_EXT.includes((p.split('.').pop()||'').toLowerCase()); });
       if (!files.length) throw new Error('مفيش ملفات مدعومة في الفولدر ده');
@@ -927,7 +927,7 @@ document.addEventListener('change', async event => {
       const queue = [...files];
       const worker = async () => { while (queue.length) { const f = queue.shift();
         try { await uploadBlob(`/api/vault/upload-file?path=${encodeURIComponent(f.webkitRelativePath || f.name)}`, f); } catch (error) { failed++; if (/مساحتك|المساحة/.test(error.message)) { queue.length = 0; toast(error.message); } }
-        done++; progress.textContent = `اترفع ${done} من ${files.length}${failed ? ` · ${failed} فشلوا` : ''}`; } };
+        done++; progress.textContent = L(`اترفع ${done} من ${files.length}`,`Uploaded ${done} of ${files.length}`)+(failed ? L(` · ${failed} فشلوا`,` · ${failed} failed`) : ''); } };
       await Promise.all([worker(), worker(), worker(), worker()]);
       toast(`خلص رفع ${done - failed} ملف`);
     }
