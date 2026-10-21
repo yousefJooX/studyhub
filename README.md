@@ -7,6 +7,14 @@ It has two modes:
 - **Personal site.** One owner, one password.
 - **Friends site** (`STUDY_MULTIUSER=1`). Open sign-up, and every user gets private data on the server. A college archive can be shared read-only with everyone.
 
+## Video walkthrough
+
+[![Watch the 3-minute StudyHub walkthrough](docs/walkthrough-thumb.jpg)](https://github.com/yousefJooX/studyhub/raw/main/docs/walkthrough.mp4)
+
+This 3-minute walkthrough (1080p, English captions) covers everything a new user does: signing up, adding courses, the timetable, tasks and deadlines, the assistant, the focus timer, Obsidian notes, the weekly review, voice reminders, Claude and installing it on a phone.
+
+Click the image to play [walkthrough.mp4](docs/walkthrough.mp4). There are also [English subtitles (.srt)](docs/walkthrough.en.srt) and a [written transcript](docs/walkthrough-transcript.md).
+
 ## Features
 
 - **Today and Overview:** the day's timetable, priorities, overdue tasks and a quick-add box.

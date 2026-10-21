@@ -9,7 +9,7 @@ NAME="${1:-$FRIENDS_NAME}"          # public address: https://$NAME.loophole.sit
 SRC="$(cd "$(dirname "$0")/.." && pwd)/"
 
 echo "==> Copying code"
-rsync -a --exclude _backup --exclude __pycache__ --exclude '*.pyc' --exclude .git --exclude deploy/deploy.env "$SRC" "$SERVER:$REMOTE/studyhub/"
+rsync -a --exclude _backup --exclude __pycache__ --exclude '*.pyc' --exclude .git --exclude docs --exclude deploy/deploy.env "$SRC" "$SERVER:$REMOTE/studyhub/"
 
 echo "==> Setting up the friends site on the server (sudo password may be asked)"
 ssh -t "$SERVER" "sudo bash $REMOTE/studyhub/deploy/friends_remote.sh '$NAME' '$APP_USER' '$REMOTE'"

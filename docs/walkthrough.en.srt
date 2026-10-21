@@ -1,0 +1,107 @@
+1
+00:00:00,000 --> 00:00:04,333
+StudyHub: a calm place for your courses, tasks, timetable and notes.
+
+2
+00:00:07,167 --> 00:00:15,167
+Start by creating an account.
+Your data is private. Nobody else can see it.
+
+3
+00:00:18,867 --> 00:00:24,267
+This is your overview page.
+Your lectures, tasks and upcoming deadlines for today.
+
+4
+00:00:24,367 --> 00:00:32,367
+Step 1: add your courses.
+Open Courses, click add, and type the course name.
+
+5
+00:00:38,000 --> 00:00:44,033
+Add the rest the same way.
+College courses or any course outside college.
+
+6
+00:00:44,133 --> 00:00:52,133
+Your weekly timetable.
+Lectures, sections, labs, and your own study sessions.
+
+7
+00:00:56,900 --> 00:01:04,667
+Tasks and deadlines.
+Each task has a course, a day to do it, and a deadline.
+
+8
+00:01:04,767 --> 00:01:09,733
+Pick the course and set the deadline.
+You get reminders 1 day, 12 hours and 1 hour before.
+
+9
+00:01:09,833 --> 00:01:17,833
+The fastest way: the assistant.
+Write like you text a friend, and it adds everything for you.
+
+10
+00:01:26,300 --> 00:01:34,300
+Tasks and the lab slot were added.
+Each one is linked to the right course.
+
+11
+00:01:34,433 --> 00:01:42,200
+Back on the overview.
+Now it shows today's lectures, tasks and deadlines.
+
+12
+00:01:42,333 --> 00:01:50,333
+Focus timer.
+Open a task and press start. Your study time is tracked.
+
+13
+00:01:53,100 --> 00:02:01,100
+Bring your Obsidian notes.
+In Settings, upload your notes folder or a ZIP of it.
+
+14
+00:02:01,567 --> 00:02:06,167
+The library.
+Folders open and close like in Obsidian.
+
+15
+00:02:06,267 --> 00:02:14,267
+Notes render cleanly.
+Math, code, callouts, tables and diagrams all work.
+
+16
+00:02:16,167 --> 00:02:24,167
+Weekly review.
+Hours studied, time per course, finished tasks and your streak.
+
+17
+00:02:24,333 --> 00:02:28,933
+Turn on notifications.
+From Settings, on your phone and your laptop.
+
+18
+00:02:29,033 --> 00:02:32,767
+Reminders in your own voice.
+Record a clip for each stage and it plays with the reminder.
+
+19
+00:02:32,867 --> 00:02:35,967
+Use Claude with it.
+Create a connector here, then ask Claude about your tasks and notes.
+
+20
+00:02:36,100 --> 00:02:44,100
+Arabic or English.
+Switch with the button at the top.
+
+21
+00:02:44,467 --> 00:02:48,067
+On your phone.
+Open the link in Chrome and choose Add to Home screen.
+
+22
+00:02:53,100 --> 00:02:59,433
+Happy studying! Website: study-joox-friends.loophole.site. Code: github.com/yousefJooX/studyhub.

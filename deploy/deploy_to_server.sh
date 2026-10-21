@@ -8,7 +8,7 @@ SRC="$(cd "$(dirname "$0")/.." && pwd)/"
 source "$(dirname "$0")/load_env.sh"
 
 echo "==> Copying code to $SERVER"
-rsync -av --exclude _backup --exclude __pycache__ --exclude '*.pyc' --exclude .git --exclude deploy/deploy.env \
+rsync -av --exclude _backup --exclude __pycache__ --exclude '*.pyc' --exclude .git --exclude docs --exclude deploy/deploy.env \
   "$SRC" "$SERVER:$REMOTE/studyhub/"
 
 if [[ -n "$OWNER_NAME" ]]; then
