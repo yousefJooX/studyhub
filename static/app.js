@@ -145,6 +145,7 @@ function homeView() {
   return heading(firstName() ? `أهلًا يا ${firstName()}` : 'أهلًا بيك','يوم جديد للتعلّم. خد نظرة على يومك، وابدأ بخطوة واحدة.',act('task',I('plus')+' مهمة جديدة')) +
     `<div class="stats">${[['موادي',S.courses.length,'كلية وتعلّم شخصي','book'],['مهام مفتوحة',open.length,'خطواتك الجاية','task'],['متأخر عن موعده',overdue.length,overdue.length?'محتاجين منك مراجعة':'مافيش مهام متأخرة','clock'],['ملفات الـVault',S.vault_count,`${S.vault_notes} نوتس ضمن الملفات`,'file']].map(([a,b,c,i],n)=>`<div class="stat ${n===2&&b?'urgent':''}"><div class="stat-top">${a}${I(i)}</div><b>${b}</b><small>${c}</small></div>`).join('')}</div>` +
     `<div class="dashboard-grid"><section class="panel"><div class="panel-head"><h2>قائمة النهارده</h2><button class="button ghost" data-page="day">اختار يوم تاني ←</button></div>${daily.length?taskRows(daily):empty('ابدأ بأول مهمة لليوم','محاضرة تذاكرها، واجب تسلّمه، أو كورس تكمّله.','task','أضف مهمة')}</section><div class="stack"><section class="panel"><div class="panel-head"><h2>جدول النهارده</h2><span class="today-date">${dayNames[dayIndex()]}</span></div><div class="panel-body">${slots.length?slots.map(s=>`<div class="schedule-item"><div class="schedule-time">${E(s.start)}<small>${E(s.end)}</small></div><div class="schedule-copy"><b>${E(s.title)}</b><small>${typeNames[s.kind]} · ${E(s.location || courseName(s.course_id))}</small></div></div>`).join(''):empty('يومك لسه مفتوح','حدّد مواعيد الكلية والمذاكرة.','slot','أضف ميعاد')}</div></section><section class="library-summary"><div class="label">CONNECTED TO OBSIDIAN</div><h2>نوتسك قريبة منك.</h2><p>${S.vault_available?`${S.mounts.map(E).join('، ')} · ${S.vault_count} ملف متاح للتصفح`:'اربط نسخة فولدراتك على السيرفر لفتحها من أي جهاز.'}</p><button class="button" data-page="library">افتح مكتبتي ${I('arrow')}</button></section></div></div>`+
+    (S.college?.college ? `<section class="panel board-news" id="board-news"><div class="panel-head"><h2>إعلانات الكلية</h2><a class="button ghost" data-board-link target="_blank" rel="noopener noreferrer" hidden>كل البوستات ←</a></div><div class="board-news-body"><div class="loading">بنجيب آخر إعلانات قناة الدفعة…</div></div></section>` : '') +
     `<div class="section-title"><h2>مسارات التعلّم</h2><div class="section-actions">${act('personal-course',I('plus')+' كورس خارج الكلية','button secondary')}<button class="button ghost" data-page="courses">كل المواد ←</button></div></div>${S.courses.length?courseCards(S.courses.slice(0,6)):empty('جهّز موادك','أضف مادة بنفسك أو اختار من أرشيف الكلية.','course','إضافة مادة')}`;
 }
 function courseView() {
@@ -407,6 +408,7 @@ async function renderPage() {
   else if (page==='note' && activeNote) content=readerView(activeNote,true);
   else if (page==='vnote' && activeVaultNote) content=readerView(activeVaultNote,false);
   $('#content').innerHTML=content;
+  if(page==='home'&&S.college?.college) loadBoardNews();
   if(page==='note'||page==='vnote') enhanceReader();
   updateTimerDisplays();
 }
@@ -885,6 +887,17 @@ function aiKeyView() {
       <div class="field"><label for="ai-key-input">الـ API key</label><input id="ai-key-input" name="key" type="password" dir="ltr" autocomplete="off" spellcheck="false" placeholder="gsk_..." required></div>
       <button type="submit" class="button">حفظ وتجربة</button><div class="error field full" role="alert"></div>
     </form></section>`;
+}
+async function loadBoardNews() {
+  const box=$('#board-news .board-news-body'); if(!box) return;
+  let data; try { data=await api('/api/board/announcements'); } catch { data={items:[],error:true}; }
+  if(!$('#board-news')) return;
+  const link=$('#board-news [data-board-link]'); if(link&&data.board){link.href=data.board;link.hidden=false;}
+  if(!data.available){ $('#board-news').remove(); return; }
+  box.innerHTML = data.items.length ? data.items.map(n=>`<a class="news-row" href="${E(n.url)}" target="_blank" rel="noopener noreferrer">
+      <span class="news-title" dir="auto">${E(n.title)}</span>
+      <small>${n.course_name?`<span dir="auto">${E(n.course_name)}</span> · `:''}${n.posted?dateFormat(n.posted+'T12:00:00Z'):''}</small></a>`).join('')
+    : empty(data.error?L('مش قادر أوصل لقناة الدفعة دلوقتي','Can\'t reach the class channel right now'):L('مفيش إعلانات جديدة','No announcements yet'),'');
 }
 function collegeProfileView() {
   if (!S.college?.college) return '';

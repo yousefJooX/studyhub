@@ -61,10 +61,19 @@ def parse_board(page):
         code = re.search(r'<span class="code">(.*?)</span>', body, re.S)
         course = re.search(r'<p class="card__course">(.*?)</p>', body, re.S)
         text = re.search(r'<p class="card__body"[^>]*>(.*?)</p>', body, re.S)
+        posted = re.search(r'Posted (\d{1,2} \w{3} \d{4})', body)
         posts.append({'id': link.group(1), 'kind': kind, 'title': _text(title.group(1) if title else '')[:280],
                       'course_code': _text(code.group(1) if code else ''), 'course_name': _text(course.group(1) if course else ''),
-                      'body': _text(text.group(1) if text else '')[:2000]})
+                      'body': _text(text.group(1) if text else '')[:2000],
+                      'posted': _posted(posted.group(1)) if posted else ''})
     return posts
+
+
+def _posted(value):
+    try:
+        return datetime.strptime(value, '%d %b %Y').date().isoformat()
+    except ValueError:
+        return ''
 
 
 def parse_deadline(ics):
@@ -183,6 +192,23 @@ def board_status():
     return {'available': enabled(), 'enabled': settings.get('enabled', True), 'last': settings.get('last', 0),
             'imported': len(settings.get('imported', [])), 'error': settings.get('error', ''),
             'url': base_url(), 'profile': accounts.college_profile()}
+
+
+@router.get('/announcements')
+def announcements(limit: int = 8):
+    """Latest faculty announcements for the user's level/program (shown on the overview)."""
+    profile = accounts.college_profile()
+    if not enabled() or not profile.get('college') or not profile.get('level'):
+        return {'items': [], 'available': False}
+    try:
+        posts = posts_for(profile['level'], profile.get('program', ''))
+    except (urllib.error.URLError, TimeoutError, ValueError):
+        return {'items': [], 'available': True, 'error': True, 'url': base_url()}
+    items = [p | {'url': f"{base_url()}/post/{p['id']}/"} for p in posts if p['kind'] == 'announcement']
+    items.sort(key=lambda p: (p.get('posted', ''), int(p['id'])), reverse=True)
+    level, program = profile['level'], profile.get('program') or 'ds'
+    return {'items': items[:max(1, min(limit, 20))], 'available': True,
+            'board': f'{base_url()}/?year={int(level)}&program={program}'}
 
 
 @router.post('/sync')
