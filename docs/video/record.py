@@ -726,10 +726,18 @@ def encode(name, frames, duration, work):
     target = DOCS / f'walkthrough-{name}.mp4'
     music = ['-stream_loop', '-1', '-i', str(MUSIC)] if MUSIC.is_file() else []
     audio = (['-map', '0:v', '-map', '1:a', '-af', f'afade=t=in:d=1.5,afade=t=out:st={max(0, duration - 3.5):.2f}:d=3.5',
-              '-c:a', 'aac', '-b:a', '96k'] if music else [])
-    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', str(listing), *music,
-                    '-vf', 'fps=30,format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', '24', '-tune', 'stillimage',
-                    *audio, '-t', f'{duration:.2f}', '-movflags', '+faststart', str(target)], check=True)
+              '-c:a', 'aac', '-b:a', '48k', '-ac', '1'] if music else ['-an'])
+    # Two passes aimed at ~9 MB: GitHub only plays videos uploaded through its web editor (user-attachments), and
+    # uploads there are easiest under 10 MB. 1600x900 keeps the text sharp; the zoom-ins carry the detail.
+    bitrate = int(9.0 * 8e6 / duration - (48000 if music else 0))
+    video = ['-vf', 'fps=30,scale=1600:900:flags=lanczos,format=yuv420p', '-c:v', 'libx264', '-preset', 'veryslow',
+             '-tune', 'stillimage', '-b:v', str(bitrate)]
+    source = ['-f', 'concat', '-safe', '0', '-i', str(listing)]
+    passlog = str(work / 'pass')
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', *source, *video, '-pass', '1', '-passlogfile', passlog, '-an',
+                    '-t', f'{duration:.2f}', '-f', 'null', os.devnull], check=True)
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', *source, *music, *video, '-pass', '2', '-passlogfile', passlog, *audio,
+                    '-t', f'{duration:.2f}', '-movflags', '+faststart', str(target)], check=True)
     return target
 
 
