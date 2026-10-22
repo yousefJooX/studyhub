@@ -15,13 +15,19 @@ The friends site is live at **https://study-joox-friends.loophole.site**. Open i
 
 ### For everyone (4 minutes)
 
-[![StudyHub walkthrough for everyone](docs/video/poster-everyone.jpg)](docs/walkthrough-everyone.mp4)
+
+
+https://github.com/user-attachments/assets/f4aa1937-b32c-4c3b-8485-3dd897fb981b
+
 
 Sign up, courses, the weekly timetable, tasks and deadline reminders, **exams and a one-click study plan**, the focus timer, **flashcards from your Obsidian notes**, **competitive programming (Codeforces + LeetCode)**, the AI assistant with a free Groq key, Obsidian notes, the weekly review, **the calendar link**, **sharing a course** and **the dark theme**.
 
 ### For HNU FCSIT students (2½ minutes)
 
-[![StudyHub walkthrough for HNU FCSIT students](docs/video/poster-fcsit.jpg)](docs/walkthrough-fcsit.mp4)
+
+
+https://github.com/user-attachments/assets/1b6e6805-233a-4de9-adbf-70181bd0b2d0
+
 
 Sign up with the faculty code and pick your level and program. Add your courses from the college archive, get every assignment from the class channel as a task, plan your exams, link your Obsidian notes, share a course with your class, review with flashcards, and put it all in your phone's calendar.
 
