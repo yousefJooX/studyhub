@@ -197,3 +197,42 @@ def test_board_down_is_handled(users, env):
     assert student.get('/api/board/announcements').json()['error'] is True
     from studyhub.board import sync_quietly
     sync_quietly()                                                                     # background worker never raises
+
+
+# ---------- faculty code must never be bypassable (regression: any code was accepted when none was configured)
+
+def _signup(body, ip):
+    return TestClient(app).post('/api/signup', json={'name': 'X', 'password': 'goodpass99', **body}, headers={'x-forwarded-for': ip})
+
+
+def test_no_faculty_code_configured_means_nobody_gets_college(users, env, archive):
+    env.delenv('STUDY_COLLEGE_CODE', raising=False)
+    assert TestClient(app).get('/api/auth').json()['college_code'] is False
+    for i, body in enumerate([{'college_code': 'anything', 'level': 3}, {'college_code': 'cs', 'level': 3},
+                              {'college': True, 'level': 3}, {'college': 'true', 'college_code': '', 'level': 3}]):
+        response = _signup({'username': f'nocode{i}', **body}, f'10.7.0.{i}')
+        assert response.status_code == 403, (body, response.text)
+    plain = _signup({'username': 'plainuser'}, '10.7.1.1')
+    assert plain.status_code == 200 and plain.json()['user']['college'] is False
+    client = TestClient(app)
+    client.post('/api/login', json={'username': 'plainuser', 'password': 'goodpass99'})
+    assert client.post('/api/account/college', json={'code': 'anything', 'level': 2}).status_code == 403
+    assert client.post('/api/account/college', json={'code': '', 'level': 2}).status_code == 403
+    assert client.get('/api/archive').status_code == 403
+    assert client.get('/api/state').json()['archive'] is False
+
+
+def test_faculty_code_must_match_exactly(users):
+    for i, code in enumerate(['wrong', 'c', 'css', 'cs ', ' x', '', 'CS-', '%', "' OR 1=1--"]):
+        response = _signup({'username': f'tryer{i}', 'college_code': code, 'level': 3}, f'10.6.0.{i}')
+        if code.strip().lower() == 'cs':
+            assert response.status_code == 200
+        elif code == '':
+            assert response.status_code == 200 and response.json()['user']['college'] is False   # just not a student
+        else:
+            assert response.status_code == 403, code
+    assert _signup({'username': 'upper', 'college_code': 'CS', 'level': 2}, '10.6.1.1').json()['user']['college'] is True
+    outsider = users('outsider2')
+    for code in ['wrong', '', 'c', None]:
+        assert outsider.post('/api/account/college', json={'code': code, 'level': 2}).status_code == 403
+    assert outsider.get('/api/state').json()['archive'] is False

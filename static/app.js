@@ -70,11 +70,9 @@ function loginView(mode='login') {
        <small class="muted">إنجليزي وأرقام بس، من ٣ حروف</small>
        <label for="su-pass">الباسورد</label><input id="su-pass" name="password" type="password" autocomplete="new-password" minlength="8" required>${AUTH.invite ? `
        <label for="su-code">كود الدعوة</label><input id="su-code" name="code" dir="ltr" autocomplete="off" required>` : ''}
-       <div class="college-box">${AUTH.college_code
-         ? `<label for="su-college">كود الكلية · لو انت من الكلية</label><input id="su-college" name="college_code" dir="ltr" autocomplete="off" data-college-code-input>`
-         : `<label class="checkbox-option"><input type="checkbox" name="college" value="1" data-college-check> أنا من ${E(AUTH.college_name || 'الكلية')}</label>`}
+       ${AUTH.college_code ? `<div class="college-box"><label for="su-college">كود الكلية · لو انت من الكلية</label><input id="su-college" name="college_code" dir="ltr" autocomplete="off" data-college-code-input>
          <div class="college-fields" hidden>${collegeFields()}</div>
-         <small class="muted">الكود بيفتحلك أرشيف الكلية وتاسكات الكلية حسب سنتك. من غيره الموقع شغال عادي.</small></div>`
+         <small class="muted">الكود بيفتحلك أرشيف الكلية وتاسكات الكلية حسب سنتك. من غيره الموقع شغال عادي.</small></div>` : ''}`
     : `${multi ? `<label for="username">اسم المستخدم</label><input id="username" name="username" dir="ltr" autocomplete="username" required autofocus>` : ''}
        <label for="password">كلمة المرور</label><input id="password" name="password" type="password" autocomplete="current-password" required ${multi ? '' : 'autofocus'}>`;
   $('#app').innerHTML = `<div class="login-page"><section class="login-art"><img src="/static/icon.svg" alt=""><div class="label">YOUR STUDY SPACE</div><h1>كل اللي بتتعلّمه.<br>في مساحتك.</h1><p>مواد الكلية، نوتس Obsidian، والكورسات اللي بتختارها بنفسك. خطة واحدة، من أي جهاز.</p></section><section class="login-form"><form id="${signup ? 'signup-form' : 'login-form'}"><h2>${signup ? 'اعمل حسابك' : 'أهلًا بيك'}</h2><p>${signup ? 'مساحة دراسية خاصة بيك، محدش يشوفها غيرك.' : 'ادخل لمساحتك الدراسية.'}</p>${fields}<button class="button" type="submit">${signup ? 'اعمل الحساب' : 'دخول لمساحتي'} ${I('arrow')}</button><div id="login-error" class="error" role="alert"></div>${switcher}<p class="small muted">بياناتك محفوظة على السيرفر.</p></form></section></div>`;
@@ -845,8 +843,9 @@ function accountView() {
     <div class="quota"><div class="quota-bar"><span style="width:${pct}%"></span></div><small>${used} من ${quota} ميجا مستخدمين</small></div>
     <h3>أرشيف الكلية</h3>
     ${account.user.college ? `<p>✓ حسابك متسجّل كطالب في ${E(AUTH.college_name || 'الكلية')}، وأرشيف الكلية ظاهر عندك.</p>`
-      : `<p>أرشيف الكلية وتاسكات الكلية لطلاب ${E(AUTH.college_name || 'الكلية')} بس.${AUTH.college_code ? ' لو انت منهم، اكتب كود الكلية اللي في جروب الدفعة واختار سنتك.' : ' لو انت منهم، اختار سنتك وفعّله من هنا.'}</p>
-         <form id="college-form" class="form-grid college-join">${AUTH.college_code ? '<label for="college-code">كود الكلية</label><input id="college-code" name="code" dir="ltr" required>' : ''}${collegeFields().replace('data-college-select','required')}<button type="submit" class="button secondary">أنا من الكلية</button></form>`}
+      : AUTH.college_code ? `<p>أرشيف الكلية وتاسكات الكلية لطلاب ${E(AUTH.college_name || 'الكلية')} بس. لو انت منهم، اكتب كود الكلية اللي في جروب الدفعة واختار سنتك.</p>
+         <form id="college-form" class="form-grid college-join"><label for="college-code">كود الكلية</label><input id="college-code" name="code" dir="ltr" required>${collegeFields().replace('data-college-select','required')}<button type="submit" class="button secondary">أنا من الكلية</button></form>`
+      : `<p>أرشيف الكلية وتاسكات الكلية لطلاب ${E(AUTH.college_name || 'الكلية')} بس، والتفعيل بيتم عن طريق صاحب الموقع.</p>`}
     <h3>وصّل Claude بمساحتك (MCP)</h3>
     <p>اعمل token، وحط الرابط في Claude ← Settings ← Connectors ← Add custom connector. Claude هيقدر يقرا ويضيف مهامك ومواعيدك ونوتسك.</p>
     ${newToken ? `<div class="token-box"><label for="token-url">رابط الـ connector (بيظهر مرة واحدة بس)</label><div class="token-row"><input id="token-url" readonly dir="ltr" value="${E(newToken.connector_url)}"><button type="button" class="button" data-copy-token>نسخ</button></div><p class="small">متبعتش الرابط ده لحد، هو زي الباسورد.</p></div>` : ''}

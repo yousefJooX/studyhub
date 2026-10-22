@@ -114,8 +114,11 @@ def college_code_required():
 
 
 def college_code_ok(code):
-    expected = os.environ.get('STUDY_COLLEGE_CODE', '')
-    return not expected or hmac.compare_digest(str(code or '').strip().encode(), expected.encode())
+    """Only the exact faculty code unlocks the college features. No code configured = nobody gets in
+    (an admin can still grant access with `python -m studyhub users college NAME`)."""
+    expected = os.environ.get('STUDY_COLLEGE_CODE', '').strip().lower()
+    given = str(code or '').strip().lower()
+    return bool(expected) and bool(given) and hmac.compare_digest(given.encode(), expected.encode())
 
 
 def archive_allowed():
@@ -254,7 +257,7 @@ def signup(body: Signup, request: Request, response: Response):
     if invite_required() and not hmac.compare_digest(body.code.strip().encode(), os.environ['STUDY_SIGNUP_CODE'].encode()):
         raise HTTPException(403, 'كود الدعوة غلط. اطلبه من صاحب الموقع')
     college = body.college or bool(body.college_code.strip())
-    if college and not college_code_ok(body.college_code):
+    if college and not college_code_ok(body.college_code):  # also refuses when no faculty code is configured
         raise HTTPException(403, 'كود الكلية غلط. اطلبه من جروب الدفعة، أو سيب الخانة فاضية')
     level, program = clean_profile(body.level, body.program) if college else (None, '')
     username = body.username.strip().lower()
