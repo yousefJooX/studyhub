@@ -198,3 +198,119 @@ def test_personal_site_login_and_pages(tmp_path, browser):
     finally:
         process.terminate()
         process.wait(10)
+
+
+def _err(page, field):
+    box = page.locator(f'#err-{field}')
+    return box.inner_text() if box.count() and box.is_visible() else ''
+
+
+@pytest.mark.parametrize('lang', ['en', 'ar'])
+def test_signup_form_explains_each_mistake(server, browser, lang):
+    """Field errors appear when you leave a field, clear as soon as you fix it, and server answers that
+    belong to one field (wrong faculty code, taken username) show under that field."""
+    context = browser.new_context(viewport={'width': 1366, 'height': 900})
+    context.add_init_script(f"try{{localStorage.setItem('studyhub-lang','{lang}')}}catch(e){{}}")
+    page = context.new_page()
+    problems = watch(page)
+    page.goto(server + '/')
+    page.wait_for_load_state('networkidle')
+    page.click('[data-auth-mode="signup"]')
+    en = lang == 'en'
+    # nothing shows while you are still typing the first time
+    page.fill('#su-user', 'ab')
+    assert _err(page, 'su-user') == ''
+    page.locator('#su-pass').focus()                                    # leave the field
+    assert ('2 of at least 3' if en else 'لسه 2 من') in _err(page, 'su-user')
+    assert page.locator('#su-user').get_attribute('aria-invalid') is not None
+    page.locator('#su-user').press_sequentially('c')                     # fixed → message gone while typing
+    assert _err(page, 'su-user') == ''
+    page.fill('#su-user', 'a b c')
+    page.locator('#su-user').dispatch_event('input')
+    assert ('No spaces' if en else 'من غير مسافات') in _err(page, 'su-user')
+    page.fill('#su-user', 'أحمد')
+    page.locator('#su-user').dispatch_event('input')
+    assert ('English letters only' if en else 'بالحروف الإنجليزية') in _err(page, 'su-user')
+    page.fill('#su-pass', '123')
+    page.locator('#su-name').focus()
+    assert ('Password too short: 3 of 8' if en else 'الباسورد لسه قصير: 3 من 8') in _err(page, 'su-pass')
+    # submit with mistakes: every field marked, first one focused, nothing sent
+    page.fill('#su-name', '')
+    requests = []
+    page.on('request', lambda r: requests.append(r.url) if '/api/signup' in r.url else None)
+    page.click('#signup-form button[type=submit]')
+    page.wait_for_timeout(400)
+    assert not requests
+    assert _err(page, 'su-name') and _err(page, 'su-user') and _err(page, 'su-pass')
+    assert page.evaluate('document.activeElement.id') == 'su-name'
+    # a wrong faculty code is checked by the server only, and shown under its own field
+    page.fill('#su-name', 'Test User')
+    page.fill('#su-user', f'validator{lang}')
+    page.fill('#su-pass', 'goodpass99')
+    page.fill('#su-college', 'nope')
+    page.select_option('#su-level', '3')
+    page.select_option('#su-program', 'rse')
+    page.click('#signup-form button[type=submit]')
+    page.wait_for_selector('#err-su-college:not([hidden])')
+    assert ('Wrong faculty code' if en else 'كود الكلية غلط') in _err(page, 'su-college')
+    assert page.evaluate('document.activeElement.id') == 'su-college'
+    assert page.locator('#login-error').inner_text() == ''
+    page.locator('#su-college').press_sequentially('x')                  # editing clears the server message
+    assert _err(page, 'su-college') == ''
+    # selects are required once a code is typed
+    page.fill('#su-college', 'cs')
+    page.select_option('#su-level', '')
+    page.click('#signup-form button[type=submit]')
+    page.wait_for_timeout(300)
+    assert ('Choose an option' if en else 'اختار من القايمة') in _err(page, 'su-level')
+    page.select_option('#su-level', '3')
+    assert _err(page, 'su-level') == ''
+    page.click('#signup-form button[type=submit]')
+    page.wait_for_selector('button.nav[data-page="home"]', timeout=10000)
+    context.close()
+    # a taken username is shown under the username field
+    context = browser.new_context(viewport={'width': 390, 'height': 844})
+    context.add_init_script(f"try{{localStorage.setItem('studyhub-lang','{lang}')}}catch(e){{}}")
+    page = context.new_page()
+    page.goto(server + '/')
+    page.wait_for_load_state('networkidle')
+    page.click('[data-auth-mode="signup"]')
+    page.fill('#su-name', 'Someone')
+    page.fill('#su-user', f'validator{lang}')
+    page.fill('#su-pass', 'goodpass99')
+    page.click('#signup-form button[type=submit]')
+    page.wait_for_selector('#err-su-user:not([hidden])')
+    assert ('username is taken' if en else 'محجوز') in _err(page, 'su-user')
+    context.close()
+    assert not [p for p in problems if 'HTTP 4' not in p and 'status of 4' not in p], problems
+
+
+def test_task_and_password_forms_show_field_errors(server, browser):
+    context = browser.new_context(viewport={'width': 1366, 'height': 900})
+    context.add_init_script("try{localStorage.setItem('studyhub-lang','en')}catch(e){}")
+    page = context.new_page()
+    problems = watch(page)
+    signup(page, server, college=False)
+    page.locator('button.nav[data-page="tasks"]').click()
+    page.click('[data-action="task"]')
+    page.wait_for_selector('#modal[open]')
+    page.click('#entry-form button[type=submit]')
+    page.wait_for_timeout(300)
+    assert page.locator('#modal[open]').count() == 1                     # stays open
+    assert 'This field is required' in page.locator('#modal .field-error:not([hidden])').first.inner_text()
+    page.fill('#entry-form input[name="title"]', 'Lab report')
+    assert page.locator('#modal .field-error:not([hidden])').count() == 0
+    page.click('#entry-form button[type=submit]')
+    page.wait_for_selector('text=Lab report')
+    page.locator('button.nav[data-page="settings"]').click()
+    page.fill('#pw-old', 'wrong-password')
+    page.fill('#pw-new', 'short')
+    page.click('#password-form button[type=submit]')
+    page.wait_for_timeout(300)
+    assert 'Password too short: 5 of 8' in _err(page, 'pw-new')
+    page.fill('#pw-new', 'newpassword1')
+    page.click('#password-form button[type=submit]')
+    page.wait_for_selector('#err-pw-old:not([hidden])')
+    assert 'current password is wrong' in _err(page, 'pw-old')
+    context.close()
+    assert not [p for p in problems if 'HTTP 4' not in p and 'status of 4' not in p], problems

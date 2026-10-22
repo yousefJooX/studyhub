@@ -643,7 +643,7 @@ document.addEventListener('submit',async event=>{
     else if(form.id==='college-form'){await api('/api/account/college','POST',data);account=await api('/api/account');await refresh();toast('أرشيف الكلية اتفعّل عندك');return;}
     else return;
     if($('#modal').open)$('#modal').close();await refresh();toast('اتحفظت على سيرفرك');
-  }catch(error){const el=form.querySelector('.error');if(el)el.textContent=error.message;else toast(error.message);}
+  }catch(error){if(window.StudyValidate?.serverError(form,error.message)){const el=form.querySelector('.error');if(el)el.textContent='';return;}const el=form.querySelector('.error');if(el)el.textContent=error.message;else toast(error.message);}
   finally{button.disabled=false;}
 });
 document.addEventListener('input',event=>{if(event.target.dataset?.collegeCodeInput!==undefined)toggleCollegeFields(!!event.target.value.trim());});
