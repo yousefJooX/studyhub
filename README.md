@@ -1,6 +1,6 @@
 # StudyHub — مساحتي
 
-A calm, self-hosted study workspace for university students. You get one place for courses, tasks with deadlines, the weekly timetable, Obsidian lecture notes and uploaded files. It runs on a small home server and installs as a PWA on phone and desktop. The interface is Arabic-first and has a one-click English switch, plus three colour themes: هادي (sage), وردي (rose) and لافندر (lavender).
+A calm, self-hosted study workspace for university students. You get one place for courses, tasks with deadlines, the weekly timetable, Obsidian lecture notes and uploaded files. It runs on a small home server and installs as a PWA on phone and desktop. The interface is Arabic-first and has a one-click English switch, plus four colour themes: هادي (sage), وردي (rose), لافندر (lavender) and ليلي (dark).
 
 It has two modes:
 
@@ -29,7 +29,7 @@ Downloads: [everyone](docs/walkthrough-everyone.mp4) · [FCSIT students](docs/wa
 
 ## Features
 
-- **Themes:** هادي, وردي and لافندر, switched from the top bar or the login page and saved per device. Every theme is a set of CSS variables in `static/app.css`, so adding one means adding one block.
+- **Themes:** هادي, وردي, لافندر and ليلي (dark; picked automatically when the device is in dark mode and no theme has been chosen yet), switched from the top bar or the login page and saved per device. Every theme is a set of CSS variables in `static/app.css`, so adding one means adding one block.
 - **Show / hide password:** an eye button on every password field (login, sign-up, password change, API key). It goes back to hidden whenever the form is sent.
 - **Today and Overview:** the day's timetable, priorities, overdue tasks and a quick-add box.
 - **Courses:** university and personal courses. Each one can be linked to an Obsidian folder and to the shared college archive.
@@ -123,8 +123,11 @@ Settings live in `config.json` (path from `STUDY_CONFIG_FILE`, mode 600) or in e
 cp deploy/deploy.env.example deploy/deploy.env    # your server, paths and address (git-ignored)
 bash deploy/deploy_to_server.sh                   # deploy + restart
 bash deploy/deploy_to_server.sh --token           # also rotate the MCP token
+bash deploy/deploy_to_server.sh --dirty           # deploy uncommitted/unpushed work anyway
 bash deploy/setup_friends.sh                      # one-time: friends site on port 8092 with its own HTTPS address
 ```
+
+The deploy script refuses to run when the folder has uncommitted changes or differs from GitHub, so the server always runs a pushed commit.
 
 For HTTPS you can put a domain behind Caddy (`deploy/Caddyfile.example`). The other option is a free [loophole](https://loophole.cloud) tunnel (`deploy/studyhub-tunnel.service.example`). The service template is `deploy/studyhub.service.example`.
 
@@ -133,8 +136,10 @@ For HTTPS you can put a domain behind Caddy (`deploy/Caddyfile.example`). The ot
 ```bash
 cd ~/studyhub                                   # the folder that contains the studyhub package
 .venv/bin/pip install -r studyhub/requirements-dev.txt && .venv/bin/playwright install chromium
-.venv/bin/python -m pytest studyhub/tests -q     # 111 tests, about 75 seconds (set STUDY_CHROME=/path/to/chrome to use a local Chrome for the browser tests)
+.venv/bin/python -m pytest studyhub/tests -q     # 114 tests, about 60 seconds (set STUDY_CHROME=/path/to/chrome to use a local Chrome for the browser tests)
 ```
+
+GitHub Actions runs the same suite on every push to `main` (`.github/workflows/tests.yml`).
 
 - **API**: every endpoint in both modes (personal and friends): accounts, isolation between users, the faculty code, quotas, timers, weekly review, vault, voices, push, archive access, own AI keys, the board sync (against captured HNU Board pages) and the MCP tools.
 - **Browser** (Playwright): every page and dialog in Arabic and English, on desktop and phone, for students inside and outside the faculty. Any JavaScript error fails the test.

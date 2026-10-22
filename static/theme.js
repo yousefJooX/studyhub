@@ -1,4 +1,4 @@
-/* StudyHub colour themes: هادي (sage, default) · وردي (rose) · لافندر (lavender).
+/* StudyHub colour themes: هادي (sage, default) · وردي (rose) · لافندر (lavender) · ليلي (dark).
    Loaded synchronously in <head> so the saved theme is on <html> before the first paint.
    The choice is stored per device, like the UI language. */
 (function () {
@@ -6,11 +6,15 @@
     sage: { ar: 'هادي', en: 'Calm', color: '#F7F6F3' },
     rose: { ar: 'وردي', en: 'Rose', color: '#FFF6F7' },
     lavender: { ar: 'لافندر', en: 'Lavender', color: '#F7F3FC' },
+    dark: { ar: 'ليلي', en: 'Dark', color: '#141614' },
   };
   const KEY = 'studyhub-theme';
   const valid = name => Object.prototype.hasOwnProperty.call(THEMES, name);
   let current = 'sage';
-  try { const saved = localStorage.getItem(KEY); if (valid(saved)) current = saved; } catch {}
+  let saved = null;
+  try { saved = localStorage.getItem(KEY); } catch {}
+  if (valid(saved)) current = saved;
+  else if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) current = 'dark';  // no choice yet: follow the device
 
   function apply(name) {
     const html = document.documentElement;

@@ -318,7 +318,7 @@ def test_task_and_password_forms_show_field_errors(server, browser):
 
 # ---------------------------------------------------------------- themes (theme.js)
 
-THEME_ACCENTS = {'sage': '#3F6E5A', 'rose': '#B23F6A', 'lavender': '#6A3E9E'}
+THEME_ACCENTS = {'sage': '#3F6E5A', 'rose': '#B23F6A', 'lavender': '#6A3E9E', 'dark': '#7DB597'}
 
 
 def css_var(page, name):
@@ -331,10 +331,10 @@ def test_theme_switch_on_login_page_persists(server, browser):
     problems = watch(page)
     page.goto(server + '/')
     page.wait_for_selector('.login-controls .theme-switch')
-    assert page.evaluate('StudyTheme.list()') == ['sage', 'rose', 'lavender']
+    assert page.evaluate('StudyTheme.list()') == ['sage', 'rose', 'lavender', 'dark']
     assert page.evaluate('StudyTheme.get()') == 'sage' and page.get_attribute('html', 'data-theme') is None
     assert css_var(page, '--accent') == THEME_ACCENTS['sage']
-    for name in ('rose', 'lavender', 'sage'):
+    for name in ('rose', 'lavender', 'dark', 'sage'):
         page.click(f'.login-controls [data-theme-set="{name}"]')
         assert page.evaluate('StudyTheme.get()') == name
         assert css_var(page, '--accent') == THEME_ACCENTS[name]
@@ -355,7 +355,21 @@ def test_theme_switch_on_login_page_persists(server, browser):
     assert not problems, problems
 
 
-@pytest.mark.parametrize('theme', ['rose', 'lavender'])
+def test_dark_theme_follows_device_until_chosen(server, browser):
+    context = browser.new_context(viewport={'width': 1366, 'height': 900}, color_scheme='dark')
+    page = context.new_page()
+    page.goto(server + '/')
+    page.wait_for_selector('.login-controls .theme-switch')
+    assert page.get_attribute('html', 'data-theme') == 'dark'             # no saved choice: follow the device
+    assert page.get_attribute('meta[name="theme-color"]', 'content') == '#141614'
+    page.click('.login-controls [data-theme-set="sage"]')
+    page.reload()
+    page.wait_for_selector('.login-controls .theme-switch')
+    assert page.get_attribute('html', 'data-theme') is None                # an explicit choice wins
+    context.close()
+
+
+@pytest.mark.parametrize('theme', ['rose', 'lavender', 'dark'])
 @pytest.mark.parametrize('lang', ['ar', 'en'])
 def test_every_page_in_each_new_theme(server, browser, theme, lang):
     context = browser.new_context(viewport={'width': 1366, 'height': 900})
@@ -367,7 +381,7 @@ def test_every_page_in_each_new_theme(server, browser, theme, lang):
     assert page.locator('.topbar .theme-switch + .lang-toggle').count() == 1  # right next to عربي/English
     assert css_var(page, '--accent') == THEME_ACCENTS[theme]
     names = page.locator('.topbar .theme-name').all_inner_texts()
-    assert names == (['Calm', 'Rose', 'Lavender'] if lang == 'en' else ['هادي', 'وردي', 'لافندر'])
+    assert names == (['Calm', 'Rose', 'Lavender', 'Dark'] if lang == 'en' else ['هادي', 'وردي', 'لافندر', 'ليلي'])
     for name in PAGES + ['archive']:
         page.locator(f'button.nav[data-page="{name}"]').first.click()
         page.wait_for_load_state('networkidle')
