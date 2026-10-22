@@ -112,6 +112,7 @@ Settings live in `config.json` (path from `STUDY_CONFIG_FILE`, mode 600) or in e
 | `STUDY_SIGNUP_CODE` | Friends-mode invite code; when set, sign-up needs it |
 | `STUDY_COLLEGE_CODE` | Faculty code (e.g. `cs`) that unlocks the college archive and college tasks; students also pick their level and program |
 | `STUDY_COLLEGE_NAME` | Name of the faculty shown in the app |
+| `STUDY_TELEGRAM_BOT` | Telegram bot username shown to faculty students (default `HNU_CS_bot`) |
 | `STUDY_BOARD_URL`, `STUDY_BOARD_SYNC` | HNU Board address for college tasks; set `STUDY_BOARD_SYNC=0` to turn it off |
 | `STUDY_MIN_FREE_MB` | Friends-mode uploads stop below this much free disk (default 2048) |
 
@@ -161,11 +162,15 @@ GitHub Actions runs the same suite on every push to `main` (`.github/workflows/t
 
 `tests/security_check.py` runs 30 attack checks against a throwaway local instance: auth bypass, SQL injection, XSS, path traversal, IDOR, malicious uploads, zip-slip, zip bombs, CSRF, brute force, oversized requests and request floods. See the top of the file for how to run it.
 
-Found a security problem? Please open a private security advisory on GitHub instead of a public issue.
+Found a security problem? See [SECURITY.md](SECURITY.md) and report it privately instead of in a public issue.
 
 ## Never commit
 
 `data/`, `config.json`, `deploy/deploy.env`, SQLite files and tokens are all git-ignored. Treat the MCP connector URL like a password.
+
+## Contributing
+
+Issues and pull requests are welcome, in Arabic or English. [CONTRIBUTING.md](CONTRIBUTING.md) covers running it locally, the tests and how the code is laid out. Want StudyHub for your own faculty? The college features are configured, not hard-coded; open an issue and we'll help you plug in your sources.
 
 ## Contributors
 

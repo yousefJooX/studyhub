@@ -1,0 +1,31 @@
+name: Bug report / مشكلة
+description: Something doesn't work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened? / إيه اللي حصل؟
+      description: What you did, what you expected, and what you got instead. Screenshots help.
+    validations:
+      required: true
+  - type: input
+    id: page
+    attributes:
+      label: Page / الصفحة
+      placeholder: e.g. Tasks, Notes, Weekly review
+  - type: dropdown
+    id: lang
+    attributes:
+      label: Language / اللغة
+      options: [عربي, English]
+  - type: dropdown
+    id: theme
+    attributes:
+      label: Theme / الثيم
+      options: [هادي, وردي, لافندر, ليلي (dark)]
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser / الجهاز والمتصفح
+      placeholder: e.g. Android Chrome, installed as an app

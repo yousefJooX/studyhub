@@ -1,0 +1,20 @@
+name: Feature idea / فكرة
+description: Suggest something that would help students
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does it solve? / بتحل مشكلة إيه؟
+      description: Describe the situation a student is in, not only the feature.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea / الفكرة
+  - type: dropdown
+    id: who
+    attributes:
+      label: Who is it for? / لمين؟
+      options: [Every student, CS / engineering students, One faculty or university]
