@@ -893,6 +893,7 @@ async function loadBoardNews() {
   if(!$('#board-news')) return;
   const link=$('#board-news [data-board-link]'); if(link&&data.board){link.href=data.board;link.hidden=false;}
   if(!data.available){ $('#board-news').remove(); return; }
+  if(data.needs_level){ box.innerHTML=`<div class="empty"><p>${L('اختار سنتك وبرنامجك من الإعدادات عشان تظهرلك إعلانات دفعتك وتاسكاتها.','Pick your level and program in Settings to see your class announcements and tasks.')}</p><button class="button secondary" data-page="settings">${L('افتح الإعدادات','Open settings')}</button></div>`; return; }
   box.innerHTML = data.items.length ? data.items.map(n=>`<a class="news-row" href="${E(n.url)}" target="_blank" rel="noopener noreferrer">
       <span class="news-title" dir="auto">${E(n.title)}</span>
       <small>${n.course_name?`<span dir="auto">${E(n.course_name)}</span> · `:''}${n.posted?dateFormat(n.posted+'T12:00:00Z'):''}</small></a>`).join('')

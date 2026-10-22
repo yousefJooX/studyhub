@@ -265,8 +265,10 @@ def board_status():
 def announcements(limit: int = 8):
     """Latest faculty announcements for the user's level/program (shown on the overview)."""
     profile = accounts.college_profile()
-    if not enabled() or not profile.get('college') or not profile.get('level'):
+    if not enabled() or not profile.get('college'):
         return {'items': [], 'available': False}
+    if not profile.get('level'):
+        return {'items': [], 'available': True, 'needs_level': True}
     try:
         posts = posts_for(profile['level'], profile.get('program', ''))
     except (urllib.error.URLError, TimeoutError, ValueError):

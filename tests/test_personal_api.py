@@ -235,3 +235,12 @@ def test_cross_origin_write_rejected(personal):
 def test_owner_name(env, personal):
     env.setenv('STUDY_OWNER_NAME', 'Joox')
     assert personal.get('/api/state').json()['user']['name'] == 'Joox'
+
+
+def test_owner_announcements_need_a_level_first(personal, fake_board):
+    """Regression: on the single-owner site the announcements card vanished when no level was saved."""
+    first = personal.get('/api/board/announcements').json()
+    assert first == {'items': [], 'available': True, 'needs_level': True}
+    assert personal.put('/api/profile/college', json={'level': 4, 'program': 'rse'}).status_code == 200
+    news = personal.get('/api/board/announcements').json()
+    assert news['available'] and len(news['items']) == 4
