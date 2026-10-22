@@ -1,0 +1,25 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # The repository IS the `studyhub` package, so check it out into a folder of that name
+      # and run pytest from its parent (see tests/conftest.py).
+      - uses: actions/checkout@v4
+        with:
+          path: studyhub
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: studyhub/requirements*.txt
+      - run: pip install -r studyhub/requirements.txt -r studyhub/requirements-dev.txt
+      - run: python -m playwright install --with-deps chromium
+      - run: python -m pytest studyhub/tests -q
