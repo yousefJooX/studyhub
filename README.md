@@ -21,7 +21,9 @@ Sign up, courses, the weekly timetable, tasks and deadline reminders, the AI ass
 
 ### For HNU FCSIT students (under 3 minutes)
 
-https://github.com/user-attachments/assets/61b3ac9f-d2ed-4c44-a10a-ebf5154dca4e
+https://github.com/user-attachments/assets/9bacb74e-f5fe-4e6d-98a5-65a512695b32
+
+
 
 Sign up with the faculty code, pick your level and program, and get your level's courses, every assignment from the class channel (open and closed), college announcements and the college archive.
 
