@@ -57,12 +57,13 @@ def accounts_db():
             CREATE TABLE IF NOT EXISTS attempts(key TEXT PRIMARY KEY, started REAL NOT NULL, count INTEGER NOT NULL);
             ''')
             columns = {r[1] for r in db.execute('PRAGMA table_info(users)')}
-            if 'college' not in columns:
-                db.execute('ALTER TABLE users ADD COLUMN college INTEGER NOT NULL DEFAULT 0')
-            if 'level' not in columns:
-                db.execute('ALTER TABLE users ADD COLUMN level INTEGER')
-            if 'program' not in columns:
-                db.execute("ALTER TABLE users ADD COLUMN program TEXT NOT NULL DEFAULT ''")
+            for name, kind in (('college', 'INTEGER NOT NULL DEFAULT 0'), ('level', 'INTEGER'), ('program', "TEXT NOT NULL DEFAULT ''")):
+                if name not in columns:
+                    try:
+                        db.execute(f'ALTER TABLE users ADD COLUMN {name} {kind}')
+                    except sqlite3.OperationalError as error:  # a parallel first request added it a moment ago
+                        if 'duplicate column' not in str(error):
+                            raise
             yield db
     finally:
         db.close()
