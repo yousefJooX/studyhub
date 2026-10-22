@@ -39,8 +39,13 @@ Downloads: [everyone](docs/walkthrough-everyone.mp4) · [FCSIT students](docs/wa
   - Obsidian-style Markdown: callouts, task lists, `==highlight==`, `%%comments%%`, wiki-links, KaTeX math and Mermaid diagrams.
   - Code highlighting, a table of contents and a reading-progress bar.
   - A collapsible folder tree.
+- **Exams and a study plan:** enter your exam timetable (course, date, how heavy it is). One click spreads study sessions over the days left: the day before each exam is its final review, other days go to the closest and heaviest exam, and you choose the hours per day, the session length and rest days. Sessions are ordinary tasks, so they show up in Today, reminders and the weekly review. Countdowns sit on the overview.
+- **Flashcards (spaced repetition):** cards with Again / Hard / Good / Easy grading on an SM-2 schedule like Anki, keyboard shortcuts (Space, 1–4) and a due count in the sidebar. Make them by hand, pull them out of an Obsidian note that uses the Spaced Repetition plugin syntax (`question :: answer`, `:::` for both ways, or a `?` line), or let the assistant write them from a note. You pick which drafts to keep.
+- **Competitive programming:** add your Codeforces handle and/or LeetCode username to see rating, rank, solved problems, the daily streak, your strongest tags and recent solves. You also get a problem of the day (an unsolved Codeforces problem a bit above your rating, plus LeetCode's daily) and the upcoming Codeforces and LeetCode contests, one click from your plan.
+- **Calendar link:** a private iCalendar link for Google Calendar, Apple Calendar or Outlook. It carries open deadlines, timed tasks, the weekly timetable, exams and (optionally) contests, and refreshes by itself.
+- **Share a course (friends site):** make a code for a course and send it to classmates. Each of them gets their own copy of its notes, open tasks, timetable, upcoming exams and flashcards. Codes expire after 30 days and can be stopped at any time.
 - **Deadline voice reminders:** Web Push reminders at 1 day, 12 hours and 1 hour before a deadline. Each stage plays a random clip from a folder of your own recorded voice notes.
-- **College tasks from the class channels:** for students of the faculty, every assignment posted on the HNU FCSIT WhatsApp channels for their level and program is added to their tasks with its deadline and course. The data comes from [HNU Board](https://github.com/moustafasayed068/hnu-board) by Moustafa Sayed.
+- **College tasks from the class channels:** pluggable per faculty (see [Bring it to your faculty](#bring-it-to-your-faculty)). For HNU FCSIT students, every assignment posted on the HNU FCSIT WhatsApp channels for their level and program is added to their tasks with its deadline and course. The data comes from [HNU Board](https://github.com/moustafasayed068/hnu-board) by Moustafa Sayed.
 - **In-app assistant (optional):** chat with any OpenAI-compatible model (Groq, Gemini, OpenRouter, Ollama…) that can create tasks, courses, timetable slots and notes for you. Each user can add their own free Groq, Gemini or OpenRouter key in Settings, with step-by-step instructions. The key is checked with the provider and stored encrypted. The site's own key, if set, is a capped fallback. A fallback provider takes over when the main one is rate-limited.
 - **MCP server:** connect Claude (with your own subscription) as a custom connector. It gets 13 tools: today, tasks, courses, schedule, notes search/read/create, files and the weekly review. See [MCP.md](MCP.md).
 - **Friends mode:**
@@ -114,7 +119,35 @@ Settings live in `config.json` (path from `STUDY_CONFIG_FILE`, mode 600) or in e
 | `STUDY_COLLEGE_NAME` | Name of the faculty shown in the app |
 | `STUDY_TELEGRAM_BOT` | Telegram bot username shown to faculty students (default `HNU_CS_bot`) |
 | `STUDY_BOARD_URL`, `STUDY_BOARD_SYNC` | HNU Board address for college tasks; set `STUDY_BOARD_SYNC=0` to turn it off |
+| `STUDY_COLLEGE_SOURCE` | Where college tasks come from: `hnu_board` (default), `json_feed` or `none` |
+| `STUDY_COLLEGE_FEED_URL`, `STUDY_COLLEGE_SOURCE_NAME`, `STUDY_COLLEGE_HOME_URL` | The `json_feed` source: feed address with `{level}` and `{program}`, its display name and a link to its site |
+| `STUDY_COLLEGE_LEVELS`, `STUDY_COLLEGE_PROGRAMS` | Number of years (default 4) and programs as `key=Name;key=Name` (default HNU FCSIT's DS, MSE, RSE) |
+| `STUDY_TRUST_PROXY=1` | Take the client address from `X-Forwarded-For` even when the proxy is not on localhost (Docker) |
 | `STUDY_MIN_FREE_MB` | Friends-mode uploads stop below this much free disk (default 2048) |
+
+## Run it with Docker
+
+```bash
+git clone https://github.com/yousefJooX/studyhub.git && cd studyhub
+docker compose run --rm studyhub init        # owner password (personal site; skip in friends mode)
+docker compose up -d                         # http://127.0.0.1:8091
+```
+
+Data lives in the `studyhub-data` volume (`docker compose cp studyhub:/data ./backup` makes a copy). `compose.yaml` lists the common settings: friends mode, your Obsidian vault mounted read-only, the public address. The port is published on `127.0.0.1` only; put HTTPS in front of it (Caddy or a tunnel, below) before opening it to the internet. To try it on plain `http://localhost`, start it with `STUDY_SECURE_COOKIE=false docker compose up -d`.
+
+## Bring it to your faculty
+
+The college features (tasks from the class channels, announcements, levels and programs) are configured, not hard-coded. HNU FCSIT uses [HNU Board](https://github.com/moustafasayed068/hnu-board). Any other faculty can publish one JSON file per level and program and point StudyHub at it:
+
+```bash
+STUDY_COLLEGE_SOURCE=json_feed
+STUDY_COLLEGE_FEED_URL=https://example.edu/studyhub/{level}/{program}.json
+STUDY_COLLEGE_NAME="Faculty of Engineering"
+STUDY_COLLEGE_LEVELS=5
+STUDY_COLLEGE_PROGRAMS="power=Power Engineering;comm=Communications"
+```
+
+The feed format and how to write a new adapter are at the top of [`college_sources.py`](college_sources.py). Open an issue if you want help connecting your faculty.
 
 ## Deploy to a home server
 
@@ -137,7 +170,7 @@ For HTTPS you can put a domain behind Caddy (`deploy/Caddyfile.example`). The ot
 ```bash
 cd ~/studyhub                                   # the folder that contains the studyhub package
 .venv/bin/pip install -r studyhub/requirements-dev.txt && .venv/bin/playwright install chromium
-.venv/bin/python -m pytest studyhub/tests -q     # 114 tests, about 60 seconds (set STUDY_CHROME=/path/to/chrome to use a local Chrome for the browser tests)
+.venv/bin/python -m pytest studyhub/tests -q     # 132 tests, about 80 seconds (set STUDY_CHROME=/path/to/chrome to use a local Chrome for the browser tests)
 ```
 
 GitHub Actions runs the same suite on every push to `main` (`.github/workflows/tests.yml`).

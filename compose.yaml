@@ -1,0 +1,30 @@
+# StudyHub with Docker Compose.
+#   docker compose run --rm studyhub init   → owner password for the personal site (skip for STUDY_MULTIUSER=1)
+#   docker compose up -d                    → http://127.0.0.1:8091
+# Put HTTPS in front of it (Caddy, a tunnel…) before opening it to the internet; see README.
+services:
+  studyhub:
+    build: .
+    image: studyhub
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8091:8091"         # only this machine; your reverse proxy / tunnel reaches it here
+    volumes:
+      - studyhub-data:/data           # database, uploads, config.json (back up: docker compose cp studyhub:/data ./backup)
+      # - /path/to/your/Obsidian:/vault:ro   # optional: your vault, read-only
+    environment:
+      STUDY_TRUST_PROXY: "1"          # the real client address comes from the proxy's X-Forwarded-For
+      STUDY_SECURE_COOKIE: ${STUDY_SECURE_COOKIE:-true}   # set to false only to try it on plain http://localhost
+      STUDY_PUBLIC_ORIGIN: ${STUDY_PUBLIC_ORIGIN:-}
+      # STUDY_VAULT_ROOT: /vault
+      # STUDY_MULTIUSER: "1"          # friends mode: everyone signs up with their own account
+      # STUDY_SIGNUP: open
+      # STUDY_COLLEGE_CODE: cs
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+
+volumes:
+  studyhub-data:
