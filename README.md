@@ -19,7 +19,7 @@ https://github.com/user-attachments/assets/01afbf70-37e1-49d3-b488-8d17cb15e151
 
 Sign up, courses, the weekly timetable, tasks and deadline reminders, the AI assistant with a free Groq key, the focus timer, Obsidian notes, the weekly review, reminders in your own voice, Claude, and installing it on a phone.
 
-### For HNU FCSIT students (1.5 minutes)
+### For HNU FCSIT students (under 3 minutes)
 
 https://github.com/user-attachments/assets/61b3ac9f-d2ed-4c44-a10a-ebf5154dca4e
 
