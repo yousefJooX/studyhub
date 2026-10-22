@@ -13,17 +13,19 @@ The friends site is live at **https://study-joox-friends.loophole.site**. Open i
 
 ## Video walkthrough
 
-### بالعربي (الموقع بالعربي)
+### For everyone (3 minutes)
 
-https://github.com/user-attachments/assets/8a0ddaf6-06a4-4c80-9dca-c3212424f286
+https://github.com/user-attachments/assets/01afbf70-37e1-49d3-b488-8d17cb15e151
 
-### In English (English interface)
+Sign up, courses, the weekly timetable, tasks and deadline reminders, the AI assistant with a free Groq key, the focus timer, Obsidian notes, the weekly review, reminders in your own voice, Claude, and installing it on a phone.
 
-https://github.com/user-attachments/assets/7cd01743-6caf-45e6-83c1-002fdad53eaa
+### For HNU FCSIT students (1.5 minutes)
 
-Each video is about 3 minutes. It covers signing up with the faculty code and choosing your level, courses, the timetable, tasks and deadlines, college tasks from the class channel, getting a free Groq key for the assistant, the focus timer, Obsidian notes, the weekly review, voice reminders, Claude and installing the site on a phone.
+https://github.com/user-attachments/assets/61b3ac9f-d2ed-4c44-a10a-ebf5154dca4e
 
-Downloads: [Arabic video](docs/walkthrough-ar.mp4) · [English video](docs/walkthrough-en.mp4). Subtitles: [Arabic .srt](docs/walkthrough-ar.srt) · [English .srt](docs/walkthrough-en.srt). Transcripts: [Arabic](docs/walkthrough-transcript-ar.md) · [English](docs/walkthrough-transcript-en.md).
+Sign up with the faculty code, pick your level and program, and get your level's courses, every assignment from the class channel (open and closed), college announcements and the college archive.
+
+Downloads: [everyone](docs/walkthrough-everyone.mp4) · [FCSIT students](docs/walkthrough-fcsit.mp4). Subtitles: [everyone](docs/walkthrough-everyone.srt) · [FCSIT](docs/walkthrough-fcsit.srt). Transcripts: [everyone](docs/walkthrough-transcript-everyone.md) · [FCSIT](docs/walkthrough-transcript-fcsit.md).
 
 ## Features
 

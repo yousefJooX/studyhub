@@ -1,0 +1,72 @@
+1
+00:00:00,000 --> 00:00:04,333
+StudyHub: For HNU FCSIT students: your level’s courses, tasks and archive.
+
+2
+00:00:06,433 --> 00:00:14,933
+Sign up as an FCSIT student.
+Students of the faculty get the archive, college tasks and announcements.
+
+3
+00:00:15,167 --> 00:00:17,533
+Enter the faculty code.
+It is shared in your class group.
+
+4
+00:00:17,633 --> 00:00:25,167
+Pick your level and program.
+This decides which courses, tasks and announcements you get.
+
+5
+00:00:25,267 --> 00:00:33,333
+Your overview, with college announcements.
+The latest posts from your class channel, for your level and program.
+
+6
+00:00:33,433 --> 00:00:40,133
+Your level’s courses and tasks arrive on their own.
+Synced from HNU Board every few minutes, or right now with Sync now.
+
+7
+00:00:40,233 --> 00:00:45,400
+All your level’s courses, already added.
+Straight from the faculty’s course list for Level 4 · Robotics.
+
+8
+00:00:45,500 --> 00:00:49,900
+Every assignment from the class channel.
+With deadline, course and a link to the post.
+
+9
+00:00:50,000 --> 00:00:58,133
+Open ones stay open, old ones show as closed.
+Closed ones are not counted as your work in the weekly review.
+
+10
+00:00:58,233 --> 00:01:03,400
+The college archive.
+Lectures and files of every course, opened at your level.
+
+11
+00:01:03,500 --> 00:01:10,400
+Open any lecture.
+PDFs and slides from the archive, one click away.
+
+12
+00:01:10,500 --> 00:01:18,200
+Link an archive course to yours.
+Its files then show inside your course page.
+
+13
+00:01:18,267 --> 00:01:24,067
+Changed level or program?.
+Update it here any time.
+
+14
+00:01:24,167 --> 00:01:27,567
+Everything else works like the general walkthrough.
+Timetable, focus timer, notes, weekly review and the AI assistant.
+
+15
+00:01:30,633 --> 00:01:36,967
+Happy studying! Website: study-joox-friends.loophole.site · Code: github.com/yousefJooX/studyhub
