@@ -2,6 +2,7 @@
 and the college source adapters. Codeforces, LeetCode, the model and college feeds are local fakes."""
 import json
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from http.server import BaseHTTPRequestHandler
 
 import pytest
@@ -12,8 +13,12 @@ from studyhub.app import app
 from .conftest import _serve
 
 
+def cairo_today():
+    return datetime.now(ZoneInfo('Africa/Cairo')).date()   # the app's "today", whatever the machine's zone
+
+
 def day(n):
-    return (date.today() + timedelta(days=n)).isoformat()
+    return (cairo_today() + timedelta(days=n)).isoformat()
 
 
 class JSONHandler(BaseHTTPRequestHandler):
@@ -58,7 +63,7 @@ def test_study_plan_fills_days_and_reviews_before_each_exam(personal):
     assert any(t['title'] == 'Final review: Physics' for t in tasks)
     done = tasks[0]
     personal.put(f"/api/tasks/{done['id']}", json={**{k: done[k] for k in ('title', 'planned_date')}, 'status': 'done'})
-    again = personal.post('/api/exams/plan', json={'minutes_per_day': 50, 'session_minutes': 50, 'rest_days': [(date.today().weekday() + 2) % 7]}).json()
+    again = personal.post('/api/exams/plan', json={'minutes_per_day': 50, 'session_minutes': 50, 'rest_days': [(cairo_today().weekday() + 2) % 7]}).json()
     tasks = personal.get('/api/state').json()['tasks']
     assert again['removed'] == 14 and done['id'] in {t['id'] for t in tasks}                # finished sessions stay
     assert personal.get('/api/exams/plan/settings').json()['minutes_per_day'] == 50
@@ -82,7 +87,7 @@ def test_cards_spaced_repetition(personal):
     intervals = [personal.post(f"/api/cards/{card['id']}/review", json={'grade': g}).json()['interval'] for g in ('good', 'good', 'good', 'easy')]
     assert intervals[:2] == [1, 3] and intervals[2] >= 7 and intervals[3] > intervals[2]
     lapsed = personal.post(f"/api/cards/{card['id']}/review", json={'grade': 'again'}).json()
-    assert lapsed['interval'] == 0 and lapsed['due'] == date.today().isoformat() and lapsed['lapses'] == 1 and lapsed['ease'] < 2.5
+    assert lapsed['interval'] == 0 and lapsed['due'] == cairo_today().isoformat() and lapsed['lapses'] == 1 and lapsed['ease'] < 2.5
     assert personal.get('/api/cards').json()['reviewed_today'] == 5
     assert personal.post(f"/api/cards/{card['id']}/review", json={'grade': 'meh'}).status_code == 422
     assert personal.put(f"/api/cards/{card['id']}", json={'front': 'Bias', 'back': 'High bias = underfit'}).json()['back'] == 'High bias = underfit'
