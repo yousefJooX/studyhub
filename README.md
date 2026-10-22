@@ -23,9 +23,7 @@ Sign up, courses, the weekly timetable, tasks and deadline reminders, the AI ass
 
 https://github.com/user-attachments/assets/9bacb74e-f5fe-4e6d-98a5-65a512695b32
 
-
-
-Sign up with the faculty code, pick your level and program, and get your level's courses, every assignment from the class channel (open and closed), college announcements and the college archive.
+Sign up with the faculty code and pick your level and program. Then add your courses from the college archive, get every assignment from the class channel as a task (open and closed), link your Obsidian notes to each course, and use the AI assistant with your own free key to answer questions from your notes.
 
 Downloads: [everyone](docs/walkthrough-everyone.mp4) · [FCSIT students](docs/walkthrough-fcsit.mp4). Subtitles: [everyone](docs/walkthrough-everyone.srt) · [FCSIT](docs/walkthrough-fcsit.srt). Transcripts: [everyone](docs/walkthrough-transcript-everyone.md) · [FCSIT](docs/walkthrough-transcript-fcsit.md).
 
