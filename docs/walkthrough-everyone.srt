@@ -1,116 +1,134 @@
 1
-00:00:00,000 --> 00:00:04,333
-StudyHub: A calm place for your courses, tasks, timetable and notes.
-
-2
-00:00:06,500 --> 00:00:15,000
-Start by creating an account.
+00:00:04,314 --> 00:00:13,784
+Start by creating an account
 Your data is private. Nobody else can see it.
 
+2
+00:00:13,786 --> 00:00:18,730
+Not from the faculty?
+Leave the code empty. Everything else works the same for you.
+
 3
-00:00:15,867 --> 00:00:21,433
-Not from the faculty? Leave the code empty.
-Everything else works the same for you.
+00:00:21,120 --> 00:00:30,015
+Your overview
+Today’s tasks, your timetable, exam countdowns and cards to review.
 
 4
-00:00:21,567 --> 00:00:26,567
-This is your overview.
-Your day at a glance: lectures, tasks and upcoming deadlines.
-
-5
-00:00:26,667 --> 00:00:35,167
-Add your courses.
-Open Courses, click add and type the name.
-
-6
-00:00:37,533 --> 00:00:43,400
-Add the rest the same way.
+00:00:30,018 --> 00:00:40,462
+Add your courses
 University courses or anything you study on your own.
 
-7
-00:00:43,500 --> 00:00:48,300
-Your weekly timetable.
+5
+00:00:40,464 --> 00:00:45,693
+Your weekly timetable
 Lectures, sections, labs and your own study sessions.
 
-8
-00:00:48,400 --> 00:00:53,500
-Tasks and deadlines.
+6
+00:00:45,695 --> 00:00:50,398
+Tasks and deadlines
 Each task has a course, a day to do it and a deadline.
 
-9
-00:00:53,600 --> 00:01:00,667
-You get reminded before the deadline.
+7
+00:00:50,399 --> 00:00:58,149
+You get reminded before the deadline
 1 day, 12 hours and 1 hour before, on your phone and laptop.
 
+8
+00:00:58,151 --> 00:01:13,962
+Your exam timetable
+Countdowns, and how heavy each exam is.
+
+9
+00:01:13,963 --> 00:01:22,464
+A study plan in one click
+Pick your hours per day and rest days.
+
 10
-00:01:00,767 --> 00:01:05,400
-The AI assistant.
-The first time, it asks for your own free API key.
+00:01:22,467 --> 00:01:30,323
+Closest and heaviest exams first
+The day before each exam is its final review.
 
 11
-00:01:05,467 --> 00:01:09,567
-Get a free key from Groq.
-console.groq.com/keys → Create API Key → copy the key starting with gsk_.
+00:01:30,326 --> 00:01:38,823
+Sessions land in My day
+Each one has a focus timer, and your study time is saved.
 
 12
-00:01:09,667 --> 00:01:18,167
-Paste it and click Save and test.
-The site checks the key and stores it encrypted.
+00:01:38,824 --> 00:01:48,254
+Flashcards from your notes
+Already writing “question :: answer” in Obsidian? They are picked up.
 
 13
-00:01:19,200 --> 00:01:25,233
-Write like you text a friend.
-It adds tasks and timetable slots for you.
+00:01:48,255 --> 00:01:53,004
+Or let the assistant write them
+You choose which cards to keep.
 
 14
-00:01:30,467 --> 00:01:38,567
-Done, all added.
-With deadlines, and linked to the right course.
+00:01:53,006 --> 00:02:09,786
+Review a few minutes a day
+Again, Hard, Good or Easy decides when each card comes back, like Anki.
 
 15
-00:01:38,667 --> 00:01:47,167
-Focus timer.
-Open a task and press start. Your study time is saved.
+00:02:09,788 --> 00:02:20,307
+Competitive programming
+Link your Codeforces and LeetCode accounts. No password needed.
 
 16
-00:01:50,333 --> 00:01:55,933
-Bring your Obsidian notes.
-Upload your notes folder or a ZIP of it.
+00:02:20,308 --> 00:02:25,141
+Rating, solved problems and your streak
+Plus the topics you practise most.
 
 17
-00:01:56,067 --> 00:02:00,100
-The library.
-Folders open and close like in Obsidian.
+00:02:25,142 --> 00:02:31,037
+A problem of the day and upcoming contests
+One click puts a contest in your plan and your calendar.
 
 18
-00:02:00,167 --> 00:02:06,867
-Notes look clean.
-Math, code, callouts, tables and diagrams all render.
+00:02:31,038 --> 00:02:36,802
+The AI assistant
+The first time, it asks for your own free API key.
 
 19
-00:02:06,967 --> 00:02:15,467
-Weekly review.
-Hours studied, time per course, finished tasks and your streak.
+00:02:36,803 --> 00:02:43,018
+Get a free key from Groq
+console.groq.com/keys → Create API Key → copy the key starting with gsk_
 
 20
-00:02:15,733 --> 00:02:19,533
-Reminders in your own voice.
-Record a clip for each stage and it plays with the reminder.
+00:02:43,024 --> 00:02:52,510
+Write like you text a friend
+It adds tasks and timetable slots for you.
 
 21
-00:02:19,600 --> 00:02:23,633
-Use Claude with it.
-Create a connector, then ask Claude about your tasks and notes.
+00:02:52,513 --> 00:02:58,627
+Done, all added
+With deadlines, and linked to the right course.
 
 22
-00:02:23,733 --> 00:02:30,467
-English or Arabic, on any device.
-On your phone: open the link and choose Add to Home screen.
+00:02:58,628 --> 00:03:03,459
+Bring your Obsidian notes
+Upload your notes folder or a ZIP of it.
 
 23
-00:02:35,600 --> 00:02:44,933
-Get a free key for the assistant from Groq: open console.groq.com/keys, sign in with Google, click Create API Key, copy the key that starts with gsk_ and paste it in Settings → AI assistant.
+00:03:03,463 --> 00:03:10,752
+Notes look clean
+Math, code, callouts, tables and diagrams all render.
 
 24
-00:02:45,600 --> 00:02:51,933
-Happy studying! Website: study-joox-friends.loophole.site · Code: github.com/yousefJooX/studyhub
+00:03:10,755 --> 00:03:20,081
+Weekly review
+Hours studied, time per course, finished tasks and your streak.
+
+25
+00:03:20,083 --> 00:03:30,735
+Your plan in Google or iPhone Calendar
+A private link: deadlines, timetable, exams and contests, always up to date.
+
+26
+00:03:30,738 --> 00:03:40,763
+Study together
+Share a course with a code. Friends get their own copy of its notes, tasks, exams and cards.
+
+27
+00:03:40,764 --> 00:03:51,844
+Four themes, including dark
+Calm, Rose, Lavender and Dark. Arabic or English, on any device.

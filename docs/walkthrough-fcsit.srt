@@ -1,157 +1,89 @@
 1
-00:00:00,000 --> 00:00:04,333
-StudyHub: For HNU FCSIT students: your level’s courses, tasks and archive.
-
-2
-00:00:06,000 --> 00:00:12,567
-Sign up as an FCSIT student.
+00:00:04,320 --> 00:00:12,981
+Sign up as an FCSIT student
 Students of the faculty get the archive, college tasks and announcements.
 
-3
-00:00:12,700 --> 00:00:14,500
-Enter the faculty code.
+2
+00:00:12,983 --> 00:00:15,502
+Enter the faculty code
 It is shared in your class group.
 
-4
-00:00:14,600 --> 00:00:20,433
-Pick your level and program.
+3
+00:00:15,506 --> 00:00:21,949
+Pick your level and program
 This decides which courses, tasks and announcements you get.
 
-5
-00:00:20,567 --> 00:00:23,567
-Your overview.
+4
+00:00:24,163 --> 00:00:26,558
+Your overview
 Today’s tasks, your timetable and the latest posts from your class channel.
 
-6
-00:00:23,633 --> 00:00:27,933
-College announcements.
+5
+00:00:26,560 --> 00:00:34,030
+College announcements
 Straight from the WhatsApp channels of your level, through HNU Board.
 
+6
+00:00:34,031 --> 00:00:41,304
+Step 1: add your courses
+They come from the college archive of your level, with every lecture.
+
 7
-00:00:28,067 --> 00:00:31,733
-Step 1: add your courses.
-Your courses come from the college archive of your level.
+00:00:41,306 --> 00:00:47,557
+Every lecture is one click away
+PDFs and sheets uploaded for the course.
 
 8
-00:00:31,833 --> 00:00:35,800
-The archive opens at your level.
-Level 4 · Robotics: this term’s courses with all their lectures.
+00:00:47,558 --> 00:00:58,958
+Click Add to my courses
+Do it for every course you take this term.
 
 9
-00:00:35,900 --> 00:00:39,867
-Every lecture is one click away.
-PDFs and slides uploaded for the course.
+00:00:58,960 --> 00:01:05,790
+Step 2: college tasks come by themselves
+Every assignment for your level becomes a task, with its deadline and course.
 
 10
-00:00:39,967 --> 00:00:48,467
-Click Add to my courses.
-Do it for every course you are taking this term.
+00:01:05,791 --> 00:01:11,434
+You get reminded before every deadline
+1 day, 12 hours and 1 hour before. Missed ones show as closed.
 
 11
-00:00:55,567 --> 00:00:57,767
-Your courses are ready.
-Each one keeps its lectures, tasks, notes and timetable together.
+00:01:11,437 --> 00:01:28,162
+Plan your exams
+Add the exam timetable and get a study plan for the days left.
 
 12
-00:00:57,867 --> 00:01:01,967
-Taking something outside college?
-Add it with Course outside college, like a German or ML course.
+00:01:28,163 --> 00:01:32,584
+Step 3: bring your Obsidian notes
+Upload your notes folder or a ZIP, then link each course to its folder.
 
 13
-00:01:02,067 --> 00:01:07,333
-Step 2: college tasks come by themselves.
-Every assignment posted for your level becomes a task, synced every few minutes.
-
-14
-00:01:07,433 --> 00:01:11,400
-With deadline, course and the post link.
-You get reminded 1 day, 12 hours and 1 hour before the deadline.
-
-15
-00:01:11,500 --> 00:01:17,033
-Missed ones show as closed.
-They are not counted as your work in the weekly review.
-
-16
-00:01:17,133 --> 00:01:22,800
-Step 3: bring your Obsidian notes.
-Upload your notes folder, or a ZIP of it.
-
-17
-00:01:22,900 --> 00:01:29,533
-Link each course to its notes folder.
-Edit the course and pick the folder.
-
-18
-00:01:29,600 --> 00:01:31,500
-The course page.
+00:01:32,585 --> 00:01:34,990
+The course page
 Its tasks, college lectures and your notes in one place.
 
-19
-00:01:31,600 --> 00:01:36,267
-College files of the course.
-From the archive, always the latest.
+14
+00:01:34,992 --> 00:01:47,442
+Share it with your class
+One code gives classmates their own copy of the notes, exams and flashcards.
 
-20
-00:01:36,367 --> 00:01:40,767
-Your notes for the course.
-Everything from its linked Obsidian folder.
+15
+00:01:47,444 --> 00:01:57,981
+Flashcards for every course
+Spaced repetition before the exam, made from your notes.
 
-21
-00:01:40,867 --> 00:01:45,567
-Notes look like in Obsidian.
-Math, code, callouts, tables and diagrams.
+16
+00:01:57,982 --> 00:02:07,266
+Competitive programming, built in
+Codeforces and LeetCode stats, a daily problem and upcoming contests.
 
-22
-00:01:45,667 --> 00:01:48,933
-Step 4: the AI assistant.
-It needs your own free API key the first time.
+17
+00:02:07,268 --> 00:02:13,965
+Deadlines in your phone calendar
+College tasks, lectures and exams in Google or iPhone Calendar.
 
-23
-00:01:49,033 --> 00:01:52,000
-Get a free key from Groq.
-console.groq.com/keys → Create API Key → copy the key starting with gsk_.
-
-24
-00:01:52,100 --> 00:01:57,167
-Paste it and click Save and test.
-It is checked, then stored encrypted. Only you use it.
-
-25
-00:01:57,267 --> 00:02:00,667
-Ask about your lectures.
-It searches your notes, reads the right one and tells you which note it used.
-
-26
-00:02:07,500 --> 00:02:10,000
-Answers from your own notes.
-Great for revising before a quiz.
-
-27
-00:02:10,100 --> 00:02:14,700
-It can also add things for you.
-Write like you text a friend: quizzes, deadlines, timetable slots.
-
-28
-00:02:18,400 --> 00:02:24,367
-Done, all added.
-With deadlines, and linked to the right course.
-
-29
-00:02:24,500 --> 00:02:28,367
-New year or new program?
-Change your level here and you get the new courses and tasks.
-
-30
-00:02:28,467 --> 00:02:32,600
-Weekly review.
-Hours studied, time per course and finished tasks.
-
-31
-00:02:32,700 --> 00:02:36,100
-On your phone too.
-Open the link and choose Add to Home screen.
-
-32
-00:02:41,067 --> 00:02:47,400
-Happy studying! Website: study-joox-friends.loophole.site · Code: github.com/yousefJooX/studyhub
+18
+00:02:13,967 --> 00:02:18,444
+The faculty archive bot on Telegram
+One tap from the top bar.

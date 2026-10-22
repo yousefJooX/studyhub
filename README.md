@@ -13,17 +13,19 @@ The friends site is live at **https://study-joox-friends.loophole.site**. Open i
 
 ## Video walkthrough
 
-### For everyone (3 minutes)
+### For everyone (4 minutes)
 
-https://github.com/user-attachments/assets/01afbf70-37e1-49d3-b488-8d17cb15e151
+[![StudyHub walkthrough for everyone](docs/video/poster-everyone.jpg)](docs/walkthrough-everyone.mp4)
 
-Sign up, courses, the weekly timetable, tasks and deadline reminders, the AI assistant with a free Groq key, the focus timer, Obsidian notes, the weekly review, reminders in your own voice, Claude, and installing it on a phone.
+Sign up, courses, the weekly timetable, tasks and deadline reminders, **exams and a one-click study plan**, the focus timer, **flashcards from your Obsidian notes**, **competitive programming (Codeforces + LeetCode)**, the AI assistant with a free Groq key, Obsidian notes, the weekly review, **the calendar link**, **sharing a course** and **the dark theme**.
 
-### For HNU FCSIT students (under 3 minutes)
+### For HNU FCSIT students (2½ minutes)
 
-https://github.com/user-attachments/assets/9bacb74e-f5fe-4e6d-98a5-65a512695b32
+[![StudyHub walkthrough for HNU FCSIT students](docs/video/poster-fcsit.jpg)](docs/walkthrough-fcsit.mp4)
 
-Sign up with the faculty code and pick your level and program. Then add your courses from the college archive, get every assignment from the class channel as a task (open and closed), link your Obsidian notes to each course, and use the AI assistant with your own free key to answer questions from your notes.
+Sign up with the faculty code and pick your level and program. Add your courses from the college archive, get every assignment from the class channel as a task, plan your exams, link your Obsidian notes, share a course with your class, review with flashcards, and put it all in your phone's calendar.
+
+The videos are made by [`docs/video/record.py`](docs/video/record.py), which drives a throwaway copy of the app with demo data, so they can be re-recorded after every change.
 
 Downloads: [everyone](docs/walkthrough-everyone.mp4) · [FCSIT students](docs/walkthrough-fcsit.mp4). Subtitles: [everyone](docs/walkthrough-everyone.srt) · [FCSIT](docs/walkthrough-fcsit.srt). Transcripts: [everyone](docs/walkthrough-transcript-everyone.md) · [FCSIT](docs/walkthrough-transcript-fcsit.md).
 
