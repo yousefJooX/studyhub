@@ -1,6 +1,6 @@
 # StudyHub — مساحتي
 
-A calm, self-hosted study workspace for university students. You get one place for courses, tasks with deadlines, the weekly timetable, Obsidian lecture notes and uploaded files. It runs on a small home server and installs as a PWA on phone and desktop. The interface is Arabic-first and has a one-click English switch.
+A calm, self-hosted study workspace for university students. You get one place for courses, tasks with deadlines, the weekly timetable, Obsidian lecture notes and uploaded files. It runs on a small home server and installs as a PWA on phone and desktop. The interface is Arabic-first and has a one-click English switch, plus three colour themes: هادي (sage), وردي (rose) and لافندر (lavender).
 
 It has two modes:
 
@@ -29,6 +29,8 @@ Downloads: [everyone](docs/walkthrough-everyone.mp4) · [FCSIT students](docs/wa
 
 ## Features
 
+- **Themes:** هادي, وردي and لافندر, switched from the top bar or the login page and saved per device. Every theme is a set of CSS variables in `static/app.css`, so adding one means adding one block.
+- **Show / hide password:** an eye button on every password field (login, sign-up, password change, API key). It goes back to hidden whenever the form is sent.
 - **Today and Overview:** the day's timetable, priorities, overdue tasks and a quick-add box.
 - **Courses:** university and personal courses. Each one can be linked to an Obsidian folder and to the shared college archive.
 - **Tasks:** status, priority and deadlines (Africa/Cairo time). A task has a do-date that is separate from its due date. A server-side focus timer survives page reloads.
@@ -131,7 +133,7 @@ For HTTPS you can put a domain behind Caddy (`deploy/Caddyfile.example`). The ot
 ```bash
 cd ~/studyhub                                   # the folder that contains the studyhub package
 .venv/bin/pip install -r studyhub/requirements-dev.txt && .venv/bin/playwright install chromium
-.venv/bin/python -m pytest studyhub/tests -q     # 55 tests, about 40 seconds
+.venv/bin/python -m pytest studyhub/tests -q     # 111 tests, about 75 seconds (set STUDY_CHROME=/path/to/chrome to use a local Chrome for the browser tests)
 ```
 
 - **API**: every endpoint in both modes (personal and friends): accounts, isolation between users, the faculty code, quotas, timers, weekly review, vault, voices, push, archive access, own AI keys, the board sync (against captured HNU Board pages) and the MCP tools.

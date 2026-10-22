@@ -48,7 +48,7 @@ def server(tmp_path_factory, request):
 @pytest.fixture(scope='module')
 def browser():
     with playwright.sync_playwright() as p:
-        b = p.chromium.launch()
+        b = p.chromium.launch(executable_path=os.environ.get('STUDY_CHROME') or None)
         yield b
         b.close()
 
@@ -312,5 +312,158 @@ def test_task_and_password_forms_show_field_errors(server, browser):
     page.click('#password-form button[type=submit]')
     page.wait_for_selector('#err-pw-old:not([hidden])')
     assert 'current password is wrong' in _err(page, 'pw-old')
+    context.close()
+    assert not [p for p in problems if 'HTTP 4' not in p and 'status of 4' not in p], problems
+
+
+# ---------------------------------------------------------------- themes (theme.js)
+
+THEME_ACCENTS = {'sage': '#3F6E5A', 'rose': '#B23F6A', 'lavender': '#6A3E9E'}
+
+
+def css_var(page, name):
+    return page.evaluate(f"getComputedStyle(document.documentElement).getPropertyValue('{name}').trim()").upper()
+
+
+def test_theme_switch_on_login_page_persists(server, browser):
+    context = browser.new_context(viewport={'width': 1366, 'height': 900})
+    page = context.new_page()
+    problems = watch(page)
+    page.goto(server + '/')
+    page.wait_for_selector('.login-controls .theme-switch')
+    assert page.evaluate('StudyTheme.list()') == ['sage', 'rose', 'lavender']
+    assert page.evaluate('StudyTheme.get()') == 'sage' and page.get_attribute('html', 'data-theme') is None
+    assert css_var(page, '--accent') == THEME_ACCENTS['sage']
+    for name in ('rose', 'lavender', 'sage'):
+        page.click(f'.login-controls [data-theme-set="{name}"]')
+        assert page.evaluate('StudyTheme.get()') == name
+        assert css_var(page, '--accent') == THEME_ACCENTS[name]
+        assert page.get_attribute(f'[data-theme-set="{name}"]', 'aria-pressed') == 'true'
+        assert page.locator('.theme-switch [aria-pressed="true"]').count() == 1
+    page.click('[data-theme-set="lavender"]')
+    page.reload()
+    page.wait_for_selector('.login-controls .theme-switch')
+    assert page.get_attribute('html', 'data-theme') == 'lavender'          # saved per device
+    assert page.get_attribute('meta[name="theme-color"]', 'content') == '#F7F3FC'
+    assert 'Readex' in page.evaluate('getComputedStyle(document.body).fontFamily')
+    assert page.evaluate("StudyTheme.set('neon')") is False                 # unknown themes are ignored
+    assert page.evaluate('StudyTheme.get()') == 'lavender'
+    page.evaluate("localStorage.setItem('studyhub-theme','<script>')")
+    page.reload()
+    assert page.evaluate('StudyTheme.get()') == 'sage'                      # a tampered value falls back
+    context.close()
+    assert not problems, problems
+
+
+@pytest.mark.parametrize('theme', ['rose', 'lavender'])
+@pytest.mark.parametrize('lang', ['ar', 'en'])
+def test_every_page_in_each_new_theme(server, browser, theme, lang):
+    context = browser.new_context(viewport={'width': 1366, 'height': 900})
+    context.add_init_script(f"try{{localStorage.setItem('studyhub-theme','{theme}');localStorage.setItem('studyhub-lang','{lang}')}}catch(e){{}}")
+    page = context.new_page()
+    problems = watch(page)
+    signup(page, server, college=True)
+    assert page.locator('.topbar .theme-switch').count() == 1
+    assert page.locator('.topbar .theme-switch + .lang-toggle').count() == 1  # right next to عربي/English
+    assert css_var(page, '--accent') == THEME_ACCENTS[theme]
+    names = page.locator('.topbar .theme-name').all_inner_texts()
+    assert names == (['Calm', 'Rose', 'Lavender'] if lang == 'en' else ['هادي', 'وردي', 'لافندر'])
+    for name in PAGES + ['archive']:
+        page.locator(f'button.nav[data-page="{name}"]').first.click()
+        page.wait_for_load_state('networkidle')
+        text = visible_text(page)
+        assert 'undefined' not in text and 'NaN' not in text, (name, text[:200])
+        assert page.get_attribute('html', 'data-theme') == theme           # survives re-renders
+    page.click('.topbar [data-theme-set="sage"]')
+    assert page.get_attribute('html', 'data-theme') is None and css_var(page, '--accent') == THEME_ACCENTS['sage']
+    context.close()
+    assert not problems, problems
+
+
+def test_theme_switch_fits_on_a_phone(server, browser):
+    context = browser.new_context(viewport={'width': 390, 'height': 844})
+    context.add_init_script("try{localStorage.setItem('studyhub-theme','rose')}catch(e){}")
+    page = context.new_page()
+    signup(page, server, college=False)
+    assert page.locator('.topbar .theme-name').first.is_hidden()           # dots only on small screens
+    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
+    box = page.locator('.topbar [data-theme-set="lavender"]').bounding_box()
+    assert box['width'] >= 30 and box['height'] >= 30
+    context.close()
+
+
+# ---------------------------------------------------------------- show / hide password (password.js)
+
+def test_password_eye_on_login_and_signup(server, browser):
+    context = browser.new_context(viewport={'width': 1366, 'height': 900})
+    page = context.new_page()
+    problems = watch(page)
+    page.goto(server + '/')
+    page.wait_for_selector('#password')
+    eye = page.locator('#password + .pw-toggle')
+    assert eye.count() == 1 and eye.get_attribute('aria-pressed') == 'false'
+    assert eye.get_attribute('aria-label') == 'إظهار الباسورد' and eye.get_attribute('type') == 'button'
+    page.fill('#password', 'secret-pass')
+    pad = page.evaluate("parseFloat(getComputedStyle(document.querySelector('#password')).paddingLeft)")
+    eye_box, field_box = eye.bounding_box(), page.locator('#password').bounding_box()
+    assert pad >= eye_box['x'] + eye_box['width'] - field_box['x']        # RTL page: the text never runs under the eye
+    eye.click()
+    assert page.get_attribute('#password', 'type') == 'text' and eye.get_attribute('aria-pressed') == 'true'
+    assert eye.get_attribute('aria-label') == 'إخفاء الباسورد'
+    assert page.evaluate('document.activeElement.id') == 'password'        # focus goes back to the field
+    eye.click()
+    assert page.get_attribute('#password', 'type') == 'password' and eye.get_attribute('aria-pressed') == 'false'
+    assert page.input_value('#password') == 'secret-pass'                  # the value is never touched
+    assert page.locator('#modal[open]').count() == 0 and page.locator('#login-form').count() == 1   # no submit
+    page.fill('#username', 'nobody-here')
+    page.fill('#password', 'wrong-password-1')
+    eye.click()
+    page.click('#login-form button[type=submit]')                         # really sent to the server
+    page.wait_for_selector('#login-error:not(:empty), .field-error:not([hidden])')
+    assert page.get_attribute('#password', 'type') == 'password'           # hidden again when the form is sent
+    assert eye.get_attribute('aria-pressed') == 'false'
+    # sign-up form: the eye works and the short-password message still sits under the field
+    page.click('[data-auth-mode="signup"]')
+    page.wait_for_selector('#su-pass + .pw-toggle')
+    page.fill('#su-name', 'Eye Test'); page.fill('#su-user', 'eyetest'); page.fill('#su-pass', 'short')
+    page.click('#su-pass + .pw-toggle')
+    assert page.get_attribute('#su-pass', 'type') == 'text'
+    page.click('#signup-form button[type=submit]')
+    page.wait_for_selector('#err-su-pass:not([hidden])')
+    assert 'الباسورد لسه قصير' in page.inner_text('#err-su-pass')            # still a password message while shown
+    assert page.get_attribute('#su-pass', 'type') == 'text'                # still fixing it: stays as chosen
+    assert page.evaluate("document.querySelector('#err-su-pass').previousElementSibling.classList.contains('password-wrap')")
+    page.fill('#su-pass', 'goodpass99')
+    page.click('#signup-form button[type=submit]')
+    page.wait_for_selector('button.nav[data-page="home"]', timeout=10000)
+    context.close()
+    assert not [p for p in problems if 'HTTP 4' not in p and 'status of 4' not in p], problems
+
+
+def test_password_eye_in_settings_and_english(server, browser):
+    context = browser.new_context(viewport={'width': 1366, 'height': 900})
+    context.add_init_script("try{localStorage.setItem('studyhub-lang','en')}catch(e){}")
+    page = context.new_page()
+    problems = watch(page)
+    signup(page, server, college=False)
+    page.locator('button.nav[data-page="settings"]').click()
+    page.wait_for_selector('#pw-old + .pw-toggle')
+    for field in ('#pw-old', '#pw-new', '#ai-key-input'):
+        eye = page.locator(f'{field} + .pw-toggle')
+        assert eye.count() == 1, field
+        assert eye.get_attribute('aria-label') == 'Show password'
+        eye.click()
+        assert page.get_attribute(field, 'type') == 'text' and eye.get_attribute('aria-label') == 'Hide password'
+        eye.click()
+        assert page.get_attribute(field, 'type') == 'password'
+    assert page.locator('.password-wrap .password-wrap').count() == 0       # re-renders never double-wrap
+    page.locator('button.nav[data-page="home"]').click()
+    page.locator('button.nav[data-page="settings"]').click()
+    page.wait_for_selector('#pw-old + .pw-toggle')
+    assert page.locator('#pw-old ~ .pw-toggle').count() == 1
+    page.fill('#pw-old', 'goodpass99'); page.fill('#pw-new', 'brandnewpass1')
+    page.click('#pw-new + .pw-toggle')
+    page.click('#password-form button[type=submit]')
+    page.wait_for_selector('#login-form', timeout=10000)                   # password changed -> back to login
     context.close()
     assert not [p for p in problems if 'HTTP 4' not in p and 'status of 4' not in p], problems

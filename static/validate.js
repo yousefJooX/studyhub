@@ -20,7 +20,7 @@
     }
     if (v.tooShort) {
       const min = el.minLength;
-      return el.type === 'password'
+      return (el.type === 'password' || el.dataset.pw !== undefined)
         ? L(`الباسورد لسه قصير: ${value.length} من ${min}`, `Password too short: ${value.length} of ${min}`)
         : L(`لسه ${value.length} من ${min} حروف على الأقل`, `${value.length} of at least ${min} characters`);
     }
@@ -44,7 +44,7 @@
       const field = el.closest('.field');
       if (inline) inline.after(box);
       else if (field) field.append(box);
-      else el.after(box);
+      else (el.closest('.password-wrap') || el).after(box);
     }
     return box;
   }
@@ -57,7 +57,7 @@
     if (text) el.setAttribute('aria-describedby', box.id); else el.removeAttribute('aria-describedby');
     const hint = box.nextElementSibling?.matches?.('small.muted') ? box.nextElementSibling : null;
     if (hint) hint.hidden = !!text;
-    el.classList.toggle('is-valid', !text && touched.has(el) && !!el.value && el.type !== 'password');
+    el.classList.toggle('is-valid', !text && touched.has(el) && !!el.value && el.type !== 'password' && el.dataset.pw === undefined);
   }
 
   function check(el) {
