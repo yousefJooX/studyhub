@@ -167,21 +167,44 @@ def test_shared_key_daily_cap(users, fake_llm, env):
 
 def test_board_sync_courses_open_and_closed(users, fake_board):
     student = users('student', college_code='cs', level=4, program='rse')
+    mine = student.post('/api/courses', json={'title': 'ROB 401 Robot Design', 'kind': 'college'}).json()
     result = student.post('/api/board/sync').json()
-    assert result == result | {'added': 3, 'closed': 2, 'courses': 7}
+    assert result == result | {'added': 3, 'closed': 2} and 'courses' not in result
     state = student.get('/api/state').json()
-    titles = {c['title'] for c in state['courses']}
-    assert {'Robot Design', 'Robot Arms', 'Natural Language Processing', 'Computer Vision'} <= titles
+    assert [c['title'] for c in state['courses']] == ['ROB 401 Robot Design']        # the board never adds courses
+    linked = [t for t in state['tasks'] if t['course_id'] == mine['id']]
+    assert linked and all('ROB 401' in t['board']['course'] for t in linked)          # matched by course code
+    loose = [t for t in state['tasks'] if not t['course_id']]
+    assert loose and all(t['board']['course'] for t in loose)                         # others keep the board's course name
     closed = [t for t in state['tasks'] if t['board']['closed']]
     assert len(closed) == 2 and all(t['status'] == 'done' for t in closed)
     assert all(t['status'] == 'todo' and t['priority'] == 'high' for t in state['tasks'] if not t['board']['closed'])
     assert student.get('/api/weekly').json()['done_count'] == 0                    # closed posts aren't your work
     again = student.post('/api/board/sync').json()
-    assert again['added'] == 0 and again['closed'] == 0 and again['courses'] == 0
+    assert again['added'] == 0 and again['closed'] == 0
     news = student.get('/api/board/announcements').json()
     assert news['available'] and len(news['items']) == 4 and all(i['url'].endswith('/') for i in news['items'])
     assert student.put('/api/board', json={'enabled': False}).json() == {'enabled': False}
     assert student.post('/api/board/sync').json()['skipped'] == 'off'
+
+
+def test_board_cleans_up_courses_it_wrongly_created(users, fake_board):
+    """Older versions made a course for every entry in the board's list (other term, other tracks)."""
+    student = users('student', college_code='cs', level=4, program='rse')
+    from studyhub import app as core, accounts
+    def make(title, code):
+        return student.post('/api/courses', json={'title': title, 'kind': 'college'}).json()['id'], code
+    wrong, used = make('Computer Vision', 'CV 401'), make('Robot Arms', 'ROB 402')
+    token = accounts.CURRENT_USER.set(dict(accounts.user_by('username', 'student')))
+    try:
+        for cid, code in (wrong, used):
+            core.put('courses', core.get('courses', cid) | {'board_code': code})
+    finally:
+        accounts.CURRENT_USER.reset(token)
+    student.post('/api/slots', json={'title': 'Arms lab', 'course_id': used[0], 'day': 0, 'start': '09:00', 'end': '10:00', 'kind': 'lab'})
+    student.post('/api/board/sync')
+    titles = [c['title'] for c in student.get('/api/state').json()['courses']]
+    assert titles == ['Robot Arms']                                                   # unused auto course gone, used one kept
 
 
 def test_board_not_for_outsiders(users, fake_board):

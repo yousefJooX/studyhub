@@ -153,23 +153,47 @@ def posts_for(level, program, with_courses=False):
 
 
 def _course_for(post, courses):
-    code, name = post.get('course_code', '').lower(), post.get('course_name', '').lower()
+    """Link a post to one of the user's OWN courses (by board code or exact name). Never creates a course:
+    the board's course list mixes terms and tracks, so the user's courses come from the college archive."""
+    code, name = post.get('course_code', '').strip().lower(), post.get('course_name', '').strip().lower()
     for course in courses:
         title = course['title'].strip().lower()
-        if (code and (course.get('board_code', '').lower() == code or code in title)) or (name and title == name):
+        if (code and (course.get('board_code', '').strip().lower() == code or re.search(rf'(^|\W){re.escape(code)}(\W|$)', title))) \
+                or (name and title == name):
             return course['id']
-    if not (code or name):
-        return ''
-    import uuid
-    created = core.put('courses', {'id': uuid.uuid4().hex, 'title': (post['course_name'] or post['course_code'])[:200],
-                                   'kind': 'college', 'vault_folder': '', 'created': time.time(), 'board_code': post['course_code']})
-    courses.append(created)
-    return created['id']
+    return ''
+
+
+def _course_label(post):
+    code, name = post.get('course_code', '').strip(), post.get('course_name', '').strip()
+    return f'{code} · {name}' if code and name else (name or code)
+
+
+def _drop_auto_courses():
+    """Older versions created a course for every entry in the board's course list (wrong term / other tracks).
+    Remove those again, but only when the user never used them: no slots, notes, files, own tasks or vault folder."""
+    courses = [c for c in core.rows('courses') if c.get('board_code') and not c.get('archive_course') and not c.get('vault_folder')]
+    if not courses:
+        return 0
+    used = set()
+    for table in ('slots', 'notes', 'uploads'):
+        used |= {r.get('course_id') for r in core.rows(table)}
+    used |= {t.get('course_id') for t in core.rows('tasks') if not t.get('board')}
+    removed = 0
+    for course in courses:
+        if course['id'] in used:
+            continue
+        for task in core.rows('tasks'):
+            if task.get('course_id') == course['id'] and task.get('board'):
+                core.put('tasks', task | {'course_id': '', 'board': task['board'] | {'course': course['title']}})
+        core.remove_course(course['id'])
+        removed += 1
+    return removed
 
 
 def sync(force=False):
-    """Bring the board into the user's space: the courses of their level/program (once), and every
-    assignment as a task. Open ones stay open; ones whose deadline already passed come in as closed
+    """Bring the board into the user's space: every assignment of their level/program becomes a task, linked to
+    one of their own courses when it matches, otherwise labelled with the board's course name. Open ones stay open; ones whose deadline already passed come in as closed
     (marked done, labelled "closed" and left out of the weekly review)."""
     profile = accounts.college_profile()
     settings = core.setting('board_sync', {'enabled': True, 'last': 0})
@@ -180,14 +204,10 @@ def sync(force=False):
     level, program = profile['level'], profile.get('program', '')
     posts, board_courses = posts_for(level, program, with_courses=True)
     courses = core.rows('courses')
-    made_courses = 0
-    profile_key = f'{level}:{program}'
-    if settings.get('courses_for') != profile_key:  # once per level/program, so deleted courses stay deleted
-        for c in board_courses:
-            before = len(courses)
-            _course_for({'course_code': c['code'], 'course_name': c['name']}, courses)
-            made_courses += len(courses) > before
-        settings['courses_for'] = profile_key
+    if not settings.get('courses_cleaned'):
+        _drop_auto_courses()
+        settings['courses_cleaned'] = True
+        courses = core.rows('courses')
     tasks = core.rows('tasks')
     seen = set(settings.get('created', []))
     for t in tasks:
@@ -210,14 +230,14 @@ def sync(force=False):
         task = core.Task(title=post['title'] or 'Assignment', course_id=_course_for(post, courses), due=post['deadline'],
                          details=details[:10000], priority='normal' if is_closed else 'high', status='done' if is_closed else 'todo')
         value = core.save_entry('tasks', task)
-        core.put('tasks', value | {'board': {'id': post['id'], 'url': link, 'closed': is_closed}})
+        core.put('tasks', value | {'board': {'id': post['id'], 'url': link, 'closed': is_closed, 'course': _course_label(post)}})
         created.add(post['id'])
         if is_closed:
             closed += 1
         else:
             added.append(post['title'])
     core.set_setting('board_sync', settings | {'created': sorted(created)[-3000:], 'last': time.time(), 'error': ''})
-    return {'added': len(added), 'closed': closed, 'courses': made_courses, 'titles': added}
+    return {'added': len(added), 'closed': closed, 'titles': added}
 
 
 def sync_quietly():
