@@ -72,6 +72,8 @@ def database():
             CREATE TABLE IF NOT EXISTS login_attempts(client TEXT PRIMARY KEY, started REAL, count INTEGER);
             CREATE TABLE IF NOT EXISTS push_subscriptions(id TEXT PRIMARY KEY, data TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS study_sessions(id TEXT PRIMARY KEY, data TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS exams(id TEXT PRIMARY KEY, data TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS cards(id TEXT PRIMARY KEY, data TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS reminder_deliveries(id TEXT PRIMARY KEY, task_id TEXT NOT NULL,
                 subscription_id TEXT NOT NULL, kind TEXT NOT NULL, stamp TEXT NOT NULL,
                 due REAL NOT NULL, status TEXT NOT NULL DEFAULT 'pending',
@@ -175,9 +177,10 @@ class Login(BaseModel):
 
 @app.get('/api/auth')
 def auth_status(request: Request):
-    from . import accounts
+    from . import accounts, college_sources
     info = {'multiuser': accounts.enabled(), 'signup': accounts.signup_open(), 'invite': accounts.invite_required(),
-            'college_code': accounts.college_code_required(), 'college_name': accounts.COLLEGE_NAME, 'programs': accounts.PROGRAMS}
+            'college_code': accounts.college_code_required(), 'college_name': accounts.COLLEGE_NAME,
+            'programs': college_sources.programs(), 'levels': college_sources.levels()}
     try:
         authorized(request)
         user = accounts.CURRENT_USER.get()
@@ -345,7 +348,7 @@ def remove_course(course_id: str):
     with database() as db:
         if not db.execute('SELECT 1 FROM courses WHERE id=?', (course_id,)).fetchone():
             raise HTTPException(404, 'المادة غير موجودة')
-        for table in ('tasks', 'slots', 'notes', 'uploads'):
+        for table in ('tasks', 'slots', 'notes', 'uploads', 'exams', 'cards'):
             detached[table] = 0
             for row in db.execute(f'SELECT id,data FROM {table}').fetchall():
                 entry = json.loads(row['data'])
@@ -952,7 +955,14 @@ def state():
             'available_folders': available, 'vault_count': len(files), 'vault_notes': sum(f['kind'] == 'note' for f in files),
             'vault_available': bool(files), 'timezone': 'Africa/Cairo', 'server_time': time.time(),
             'task_defaults': {'duration_minutes': setting('default_task_minutes', 25)},
-            'user': current_user_public(), 'archive': archive_access(), 'college': college_profile_public(), 'telegram_bot': telegram_bot()}
+            'user': current_user_public(), 'archive': archive_access(), 'college': college_profile_public(), 'telegram_bot': telegram_bot(),
+            'exams': sorted(rows('exams'), key=lambda e: (e['date'], e.get('time') or '')),
+            'cards_due': sum(c['due'] <= cairo_today() for c in rows('cards'))}
+
+
+def cairo_today():
+    from zoneinfo import ZoneInfo
+    return datetime.now(ZoneInfo('Africa/Cairo')).date().isoformat()
 
 
 def telegram_bot():
@@ -1037,6 +1047,16 @@ app.include_router(vault_upload_router)
 app.include_router(account_router)
 from .board import router as board_router  # noqa: E402
 app.include_router(board_router)
+from .exams import router as exams_router  # noqa: E402  (exam timetable + study plan)
+app.include_router(exams_router)
+from .cards import router as cards_router  # noqa: E402  (flashcards, spaced repetition)
+app.include_router(cards_router)
+from .cp import router as cp_router  # noqa: E402  (Codeforces / LeetCode tracker)
+app.include_router(cp_router)
+from .calendar_feed import router as calendar_router  # noqa: E402  (private iCalendar feed)
+app.include_router(calendar_router)
+from .shares import router as shares_router  # noqa: E402  (share a course with friends)
+app.include_router(shares_router)
 
 
 @app.get('/api/weekly', dependencies=[Depends(authorized)])

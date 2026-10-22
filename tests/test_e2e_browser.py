@@ -14,7 +14,7 @@ from .conftest import ROOT
 
 playwright = pytest.importorskip('playwright.sync_api')
 ARABIC = re.compile(r'[؀-ۿ]{2,}')
-PAGES = ['home', 'day', 'courses', 'tasks', 'schedule', 'weekly', 'library', 'settings']
+PAGES = ['home', 'day', 'courses', 'tasks', 'schedule', 'exams', 'review', 'cp', 'weekly', 'library', 'settings']
 
 
 def free_port():
@@ -31,7 +31,8 @@ def server(tmp_path_factory, request):
     port = free_port()
     env = {**os.environ, 'PYTHONPATH': str(ROOT), 'STUDY_MULTIUSER': '1', 'STUDY_DATA_DIR': str(data), 'STUDY_SECURE_COOKIE': 'false',
            'STUDY_REMINDERS_ENABLED': 'false', 'STUDY_COLLEGE_CODE': 'cs', 'STUDY_MIN_FREE_MB': '1', 'STUDY_RATE_LIMIT': '100000',
-           'STUDY_BOARD_SYNC': '0', 'STUDY_SIGNUPS_PER_IP_HOUR': '1000'}
+           'STUDY_BOARD_SYNC': '0', 'STUDY_SIGNUPS_PER_IP_HOUR': '1000',
+           'STUDY_CF_API': 'http://127.0.0.1:9/api', 'STUDY_LC_API': 'http://127.0.0.1:9/graphql'}
     process = subprocess.Popen([sys.executable, '-m', 'uvicorn', 'studyhub.app:app', '--port', str(port)], cwd=ROOT, env=env,
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for _ in range(100):
@@ -481,3 +482,41 @@ def test_password_eye_in_settings_and_english(server, browser):
     page.wait_for_selector('#login-form', timeout=10000)                   # password changed -> back to login
     context.close()
     assert not [p for p in problems if 'HTTP 4' not in p and 'status of 4' not in p], problems
+
+
+def test_exam_plan_and_flashcards_flow(server, browser):
+    context = browser.new_context(viewport={'width': 1366, 'height': 900})
+    page = context.new_page()
+    problems = watch(page)
+    signup(page, server, college=False)
+    page.locator('button.nav[data-page="exams"]').click()
+    page.click('[data-action="x-exam"]')
+    page.fill('#exam-form input[name="title"]', 'Physics final')
+    page.fill('#exam-form input[name="date"]', page.evaluate("shiftedDay(todayDate(), 5)"))
+    page.click('#exam-form button[type=submit]')
+    page.wait_for_selector('.exam-row')
+    assert '5' in page.locator('.exam-count b').first.inner_text()
+    page.click('[data-plan="preview"]')
+    page.wait_for_selector('.plan-preview')
+    page.click('[data-action="x-plan-make"]')
+    page.wait_for_selector('.plan-panel .panel-head .muted')
+    page.locator('button.nav[data-page="day"]').click()
+    page.wait_for_selector('.task-row')
+    assert 'Physics final' in page.locator('#content').inner_text()
+    page.locator('button.nav[data-page="review"]').click()
+    page.click('[data-action="x-card"]')
+    page.fill('#card-form textarea[name="front"]', 'Newton second law?')
+    page.fill('#card-form textarea[name="back"]', 'F = m a')
+    page.click('#card-form button[type=submit]')
+    page.wait_for_selector('.card-row')
+    page.click('[data-action="x-review-start"]')
+    page.keyboard.press('Space')
+    page.wait_for_selector('.review-back')
+    page.keyboard.press('3')
+    page.wait_for_selector('.review-done')
+    page.locator('button.nav[data-page="settings"]').click()
+    page.click('[data-action="x-calendar-new"]')
+    url = page.input_value('#calendar-url')
+    assert url.endswith('.ics') and 'Physics final' in context.request.get(url).text()
+    context.close()
+    assert not problems, problems

@@ -23,7 +23,7 @@ def test_public_pages(env):
     assert client.get('/static/app.js').status_code == 200
     assert client.get('/api/auth').json() == {'multiuser': False, 'signup': False, 'invite': False, 'college_code': False,
                                               'college_name': client.get('/api/auth').json()['college_name'],
-                                              'programs': client.get('/api/auth').json()['programs'], 'authenticated': False}
+                                              'programs': client.get('/api/auth').json()['programs'], 'levels': 4, 'authenticated': False}
 
 
 def test_link_preview_uses_public_origin(env):

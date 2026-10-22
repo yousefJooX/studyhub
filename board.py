@@ -6,6 +6,7 @@ is sent to it) and adds each new assignment for the student's level and program 
 with the deadline, the course and a link back to the post.
 
 Config: STUDY_BOARD_URL (default the public HNU Board site), STUDY_BOARD_SYNC=0 to turn it off.
+Other faculties plug in their own source instead of HNU Board: see college_sources.py.
 """
 import html
 import json
@@ -21,6 +22,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 
 from . import accounts
+from . import college_sources
 from . import app as core
 
 router = APIRouter(prefix='/api/board', dependencies=[Depends(core.authorized)])
@@ -36,7 +38,7 @@ def base_url():
 
 
 def enabled():
-    return os.environ.get('STUDY_BOARD_SYNC', '1') != '0'
+    return os.environ.get('STUDY_BOARD_SYNC', '1') != '0' and college_sources.enabled()
 
 
 def _get(url, timeout=15):
@@ -144,7 +146,7 @@ def posts_for(level, program, with_courses=False):
     if program:
         return board_posts(level, program, with_courses)
     # No program chosen yet: only what every program of this level sees (whole-level posts, common courses).
-    boards = [board_posts(level, p, True) for p in accounts.PROGRAMS]
+    boards = [board_posts(level, p, True) for p in college_sources.programs()]
     common = set.intersection(*({p['id'] for p in posts} for posts, _ in boards))
     posts = [p for p in boards[0][0] if p['id'] in common]
     codes = set.intersection(*({c['code'] for c in courses} for _, courses in boards))
@@ -202,7 +204,8 @@ def sync(force=False):
     if not force and time.time() - settings.get('last', 0) < USER_EVERY:
         return {'added': 0, 'skipped': 'recent'}
     level, program = profile['level'], profile.get('program', '')
-    posts, board_courses = posts_for(level, program, with_courses=True)
+    source = college_sources.source()
+    posts, board_courses = source.posts(level, program)
     courses = core.rows('courses')
     if not settings.get('courses_cleaned'):
         _drop_auto_courses()
@@ -225,8 +228,9 @@ def sync(force=False):
         if post['kind'] != 'assignment' or post['id'] in seen or not post.get('deadline'):
             continue
         is_closed = datetime.fromisoformat(post['deadline']) < now
-        link = f"{base_url()}/post/{post['id']}/"
-        details = (post['body'] + '\n\n' if post['body'] else '') + 'من قناة الكلية عبر HNU Board: ' + link
+        link = post.get('url', '')
+        via = f'من قناة الكلية عبر {source.name}' if source.name else 'من قناة الكلية'
+        details = (post['body'] + '\n\n' if post['body'] else '') + via + (': ' + link if link else '')
         task = core.Task(title=post['title'] or 'Assignment', course_id=_course_for(post, courses), due=post['deadline'],
                          details=details[:10000], priority='normal' if is_closed else 'high', status='done' if is_closed else 'todo')
         value = core.save_entry('tasks', task)
@@ -256,9 +260,11 @@ def sync_quietly():
 @router.get('')
 def board_status():
     settings = core.setting('board_sync', {'enabled': True, 'last': 0})
+    profile = accounts.college_profile()
+    source = college_sources.source()
     return {'available': enabled(), 'enabled': settings.get('enabled', True), 'last': settings.get('last', 0),
-            'imported': len(settings.get('created', [])), 'error': settings.get('error', ''),
-            'url': base_url(), 'profile': accounts.college_profile()}
+            'imported': len(settings.get('created', [])), 'error': settings.get('error', ''), 'source': source.name,
+            'url': source.home(profile.get('level') or 1, profile.get('program', '')), 'profile': profile}
 
 
 @router.get('/announcements')
@@ -269,15 +275,15 @@ def announcements(limit: int = 8):
         return {'items': [], 'available': False}
     if not profile.get('level'):
         return {'items': [], 'available': True, 'needs_level': True}
+    source = college_sources.source()
+    level, program = profile['level'], profile.get('program', '')
     try:
-        posts = posts_for(profile['level'], profile.get('program', ''))
-    except (urllib.error.URLError, TimeoutError, ValueError):
-        return {'items': [], 'available': True, 'error': True, 'url': base_url()}
-    items = [p | {'url': f"{base_url()}/post/{p['id']}/"} for p in posts if p['kind'] == 'announcement']
-    items.sort(key=lambda p: (p.get('posted', ''), int(p['id'])), reverse=True)
-    level, program = profile['level'], profile.get('program') or 'ds'
-    return {'items': items[:max(1, min(limit, 20))], 'available': True,
-            'board': f'{base_url()}/?year={int(level)}&program={program}'}
+        posts, _ = source.posts(level, program)
+    except (urllib.error.URLError, TimeoutError, ValueError, OSError):
+        return {'items': [], 'available': True, 'error': True, 'url': source.home(level, program)}
+    items = [p for p in posts if p['kind'] == 'announcement']
+    items.sort(key=lambda p: (p.get('posted', ''), int(p['id']) if str(p['id']).isdigit() else 0), reverse=True)
+    return {'items': items[:max(1, min(limit, 20))], 'available': True, 'board': source.home(level, program)}
 
 
 @router.post('/sync')
@@ -289,8 +295,9 @@ def board_sync_now():
     accounts.throttle('board:' + (user['id'] if user else 'owner'), 20, 3600)
     try:
         return sync(force=True)
-    except (urllib.error.URLError, TimeoutError) as error:
-        raise HTTPException(502, f'مش قادر أوصل لـ HNU Board دلوقتي ({type(error).__name__})')
+    except (urllib.error.URLError, TimeoutError, OSError) as error:
+        name = college_sources.source().name or 'مصدر الكلية'
+        raise HTTPException(502, f'مش قادر أوصل لـ {name} دلوقتي ({type(error).__name__})')
 
 
 @router.put('')

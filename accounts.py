@@ -92,7 +92,7 @@ def public(row):
 
 
 COLLEGE_NAME = os.environ.get('STUDY_COLLEGE_NAME', 'كلية علوم الحاسب وتكنولوجيا المعلومات – جامعة حلوان الأهلية')
-PROGRAMS = {'ds': 'Data Science (DS)', 'mse': 'Multimedia Software (MSE)', 'rse': 'Robotics Software (RSE)'}
+PROGRAMS = {'ds': 'Data Science (DS)', 'mse': 'Multimedia Software (MSE)', 'rse': 'Robotics Software (RSE)'}  # default; see college_sources.programs()
 
 
 def clean_profile(level, program):
@@ -100,10 +100,11 @@ def clean_profile(level, program):
         level = int(level)
     except (TypeError, ValueError):
         raise HTTPException(400, 'اختار سنتك (الفرقة) من ١ لـ ٤')
-    if level not in (1, 2, 3, 4):
-        raise HTTPException(400, 'اختار سنتك (الفرقة) من ١ لـ ٤')
+    from .college_sources import levels, programs
+    if level not in range(1, levels() + 1):
+        raise HTTPException(400, f'اختار سنتك (الفرقة) من ١ لـ {levels()}')
     program = str(program or '').strip().lower()
-    if program and program not in PROGRAMS:
+    if program and program not in programs():
         raise HTTPException(400, 'البرنامج مش معروف')
     return level, program
 
@@ -182,7 +183,7 @@ def client_ip(request: Request):
     """Real client address. Behind the local tunnel every request comes from 127.0.0.1, so take the
     address the proxy appended LAST to X-Forwarded-For (earlier entries can be forged by the client)."""
     host = request.client.host if request.client else 'unknown'
-    if host in ('127.0.0.1', '::1', 'localhost'):
+    if host in ('127.0.0.1', '::1', 'localhost') or os.environ.get('STUDY_TRUST_PROXY') == '1':
         hops = [h.strip() for h in request.headers.get('x-forwarded-for', '').split(',') if h.strip()]
         if hops:
             return hops[-1][:64]

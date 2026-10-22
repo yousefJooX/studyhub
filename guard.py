@@ -27,7 +27,7 @@ def _header(scope, name):
 
 def client_key(scope):
     host = (scope.get('client') or ('unknown', 0))[0]
-    if host in LOOPBACK:
+    if host in LOOPBACK or os.environ.get('STUDY_TRUST_PROXY') == '1':  # behind a proxy (Docker: the bridge address)
         hops = [h.strip() for h in _header(scope, b'x-forwarded-for').split(',') if h.strip()]
         if hops:
             return hops[-1][:64]
