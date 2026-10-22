@@ -952,7 +952,16 @@ def state():
             'available_folders': available, 'vault_count': len(files), 'vault_notes': sum(f['kind'] == 'note' for f in files),
             'vault_available': bool(files), 'timezone': 'Africa/Cairo', 'server_time': time.time(),
             'task_defaults': {'duration_minutes': setting('default_task_minutes', 25)},
-            'user': current_user_public(), 'archive': archive_access(), 'college': college_profile_public()}
+            'user': current_user_public(), 'archive': archive_access(), 'college': college_profile_public(), 'telegram_bot': telegram_bot()}
+
+
+def telegram_bot():
+    """The faculty archive bot on Telegram, offered to college students only."""
+    bot = os.environ.get('STUDY_TELEGRAM_BOT', 'HNU_CS_bot').strip().lstrip('@')
+    if not re.fullmatch(r'[A-Za-z0-9_]{5,32}', bot):
+        return ''
+    from . import accounts
+    return bot if accounts.college_profile().get('college') else ''
 
 
 def college_profile_public():

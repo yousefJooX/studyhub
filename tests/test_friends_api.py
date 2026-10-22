@@ -207,6 +207,15 @@ def test_board_cleans_up_courses_it_wrongly_created(users, fake_board):
     assert titles == ['Robot Arms']                                                   # unused auto course gone, used one kept
 
 
+def test_telegram_bot_only_for_students(users, env):
+    student = users('student', college_code='cs', level=4, program='rse')
+    outsider = users('outsider')
+    assert student.get('/api/state').json()['telegram_bot'] == 'HNU_CS_bot'
+    assert outsider.get('/api/state').json()['telegram_bot'] == ''
+    env.setenv('STUDY_TELEGRAM_BOT', 'bad name"><script>')
+    assert student.get('/api/state').json()['telegram_bot'] == ''
+
+
 def test_board_not_for_outsiders(users, fake_board):
     outsider = users('outsider')
     assert outsider.post('/api/board/sync').status_code == 400

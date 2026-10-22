@@ -247,6 +247,8 @@ input:focus,select:focus,textarea:focus{outline:2px solid #8DB29E;border-color:v
 @media(prefers-reduced-motion:reduce){.wk-bar{transition:none}}
 .lang-toggle{min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font-size:13px;font-weight:600;color:var(--ink)}
 .lang-toggle:hover{background:var(--subtle)}
+.tg-link{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#2481cc}
+.tg-link:hover{color:#1c6aa8}
 [dir="rtl"] .tree-item span{text-align:right}[dir="ltr"] .tree-item span{text-align:left}
 [dir="ltr"] .tree-toggle[aria-expanded="true"] svg{transform:rotate(-90deg)}
 .wk-short{display:none}
@@ -324,3 +326,4 @@ input:focus,select:focus,textarea:focus{outline:2px solid #8DB29E;border-color:v
 .ai-guide{background:#f6f8f5;border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin:0 0 16px}.ai-guide summary{cursor:pointer;font-weight:600}.ai-guide ol{margin:12px 0;padding-inline-start:22px;line-height:2}.ai-guide code{background:#fff;border:1px solid var(--line);border-radius:4px;padding:0 5px}
 .board-news{margin-top:24px}.board-news-body{display:flex;flex-direction:column}.news-row{display:flex;flex-direction:column;gap:3px;padding:13px 22px;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none}.news-row:last-child{border:0}.news-row:hover{background:#f6f8f5;text-decoration:none}.news-title{font-weight:550;overflow-wrap:anywhere}.news-row small{color:var(--muted);font-size:11px}.board-news .loading{padding:24px}
 .tag.grey{color:var(--muted);background:#efeee9}
+@media(max-width:720px){.tg-link .tg-label{display:none}}
