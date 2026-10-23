@@ -1,4 +1,4 @@
-const CACHE = 'studyhub-shell-v13';
+const CACHE = 'studyhub-shell-v14';
 const SHELL = ['/', '/static/http.js', '/static/reader.js', '/static/i18n.js', '/static/theme.js', '/static/password.js', '/static/validate.js', '/static/app.js', '/static/study.js', '/static/app.css', '/static/icon.svg', '/static/icon-192.png', '/static/icon-512.png', '/manifest.webmanifest'];
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())));
 self.addEventListener('activate', event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('studyhub-shell-') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())));

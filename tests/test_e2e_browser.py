@@ -14,7 +14,7 @@ from .conftest import ROOT
 
 playwright = pytest.importorskip('playwright.sync_api')
 ARABIC = re.compile(r'[؀-ۿ]{2,}')
-PAGES = ['home', 'day', 'courses', 'tasks', 'schedule', 'exams', 'review', 'cp', 'weekly', 'library', 'settings']
+PAGES = ['home', 'day', 'courses', 'tasks', 'schedule', 'exams', 'review', 'weekly', 'library', 'settings']
 
 
 def free_port():
@@ -520,3 +520,11 @@ def test_exam_plan_and_flashcards_flow(server, browser):
     assert url.endswith('.ics') and 'Physics final' in context.request.get(url).text()
     context.close()
     assert not problems, problems
+
+
+def test_competitive_programming_is_not_in_the_sidebar(server, browser):
+    context = browser.new_context(viewport={'width': 1366, 'height': 900})
+    page = context.new_page()
+    signup(page, server, college=True)
+    assert page.locator('button.nav[data-page="cp"]').count() == 0
+    context.close()
