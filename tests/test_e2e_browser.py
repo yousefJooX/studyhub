@@ -528,3 +528,23 @@ def test_competitive_programming_is_not_in_the_sidebar(server, browser):
     signup(page, server, college=True)
     assert page.locator('button.nav[data-page="cp"]').count() == 0
     context.close()
+
+
+def test_finishing_a_task_plays_your_done_voice(server, browser):
+    context = browser.new_context(viewport={'width': 1366, 'height': 900})
+    page = context.new_page()
+    problems = watch(page)
+    signup(page, server, college=False)
+    page.evaluate("""async () => {
+        await fetch('/api/voices/done?name=yay.wav', {method: 'POST', body: new Uint8Array([82, 73, 70, 70])});
+        await api('/api/tasks', 'POST', {title: 'Lab report', planned_date: todayDate()});
+        await refresh();
+    }""")
+    page.evaluate("() => { HTMLMediaElement.prototype.play = function () { window.__played = this.src; return Promise.resolve(); }; }")
+    page.locator('button.nav[data-page="day"]').click()
+    page.locator('.task-row input[data-toggle-task]').first.check()
+    page.wait_for_function('() => window.__played')   # a function: the CSP blocks eval'd strings
+    assert '/api/voices/done/' in page.evaluate('window.__played')
+    assert page.locator('#voice-banner:not([hidden])').count() == 1
+    context.close()
+    assert not problems, problems

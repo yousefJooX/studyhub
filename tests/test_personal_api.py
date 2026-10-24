@@ -182,13 +182,21 @@ def test_vault_library_reader(personal, env, tmp_path):
 
 def test_voices(personal):
     stages = personal.get('/api/voices').json()['stages']
-    assert [s['id'] for s in stages] == ['day', 'half-day', 'hour']
+    assert [s['id'] for s in stages] == ['day', 'half-day', 'hour', 'done'] and stages[-1]['minutes'] is None
     clip = personal.post('/api/voices/day?name=my clip.mp3', content=b'ID3fake').json()
     assert personal.get(clip['url']).headers['content-type'].startswith('audio/')
     assert personal.post('/api/voices/day?name=x.html', content=b'<b>').status_code == 400
     assert personal.post('/api/voices/nope?name=x.mp3', content=b'x').status_code == 404
     assert personal.post('/api/voices/day/test').status_code == 404        # no device subscribed yet
     assert personal.delete(clip['url']).status_code == 200
+
+
+def test_done_voice(personal):
+    assert personal.get('/api/voices/pick/done').json() == {'url': ''}            # no clip: the app stays quiet
+    clip = personal.post('/api/voices/done?name=yay.mp3', content=b'ID3fake').json()
+    assert personal.get('/api/voices/pick/done').json() == {'url': clip['url']}
+    assert personal.post('/api/voices/done/test').status_code == 400               # not a reminder, nothing to push
+    assert personal.get('/api/voices/pick/nope').status_code == 404
 
 
 def test_push_subscription_validation(personal):

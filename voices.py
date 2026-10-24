@@ -1,5 +1,6 @@
 """Deadline reminder stages (e.g. 1 day / 12 h / 1 h before a task's deadline) with the owner's
-own voice clips. Each stage has a folder of clips; every reminder plays a random clip from it."""
+own voice clips. Each stage has a folder of clips; every reminder plays a random clip from it.
+One more stage, "done", is not a reminder: one of its clips plays when the user finishes a task."""
 import json
 import random
 import re
@@ -24,12 +25,20 @@ DEFAULT_STAGES = [
 ]
 
 
+DONE_STAGE = {'id': 'done', 'minutes': None, 'title': 'لما تخلّص مهمة'}
+
+
 def stages():
+    """The deadline reminder stages (the "done" stage is not one of them)."""
     return setting('deadline_stages', DEFAULT_STAGES)
 
 
+def all_stages():
+    return stages() + [DONE_STAGE]
+
+
 def stage(stage_id):
-    found = next((s for s in stages() if s['id'] == stage_id), None)
+    found = next((s for s in all_stages() if s['id'] == stage_id), None)
     if not found:
         raise HTTPException(404, 'المرحلة دي مش موجودة')
     return found
@@ -83,7 +92,14 @@ def deadline_events(task, now):
 def list_voices():
     return {'stages': [{**s, 'clips': [{'file': p.name, 'name': display_name(p), 'size': p.stat().st_size,
                                         'url': f'/api/voices/{s["id"]}/{quote(p.name)}'} for p in clips(s['id'])]}
-                       for s in stages()]}
+                       for s in all_stages()]}
+
+
+@router.get('/pick/{stage_id}')
+def pick(stage_id: str):
+    """A random clip of a stage (the app plays one from "done" when a task is finished). Before /{stage_id}/{file}."""
+    stage(stage_id)
+    return {'url': pick_voice(stage_id)}
 
 
 @router.post('/{stage_id}')
@@ -139,6 +155,8 @@ def test_stage(stage_id: str):
     """Send this stage's reminder (with a random clip) to every device that enabled notifications."""
     from .reminders import send_push
     s = stage(stage_id)
+    if s['minutes'] is None:
+        raise HTTPException(400, 'المرحلة دي بتشتغل لما تخلّص مهمة، مش تذكير')
     with database() as db:
         subscriptions = [json.loads(r['data']) for r in db.execute('SELECT data FROM push_subscriptions')]
     if not subscriptions:

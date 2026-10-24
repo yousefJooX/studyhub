@@ -496,6 +496,7 @@ def test_dispatch_deadline_stage_with_voice(personal, monkeypatch):
     reminders.run_once(now)
     assert len(sent) == 1
     assert sent[0]['stage'] == 'hour' and sent[0]['voice'] == '/api/voices/hour/1__alarm.mp3'
+    assert all(p['stage'] != 'done' for p in sent)                                  # "done" never becomes a reminder
     assert sent[0]['title'] == 'مساحتي — فاضل ساعة على الديدلاين'
 
 

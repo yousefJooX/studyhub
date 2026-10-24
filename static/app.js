@@ -508,7 +508,7 @@ document.addEventListener('click',async event=>{
     if(b.dataset.newDay) return editor('slot',{}, {day:Number(b.dataset.newDay)});
     if(b.dataset.editTask) return editor('task',S.tasks.find(t=>t.id===b.dataset.editTask));
     if(b.dataset.editSlot) return editor('slot',S.slots.find(t=>t.id===b.dataset.editSlot));
-    if(b.dataset.toggleTask) {const t=S.tasks.find(t=>t.id===b.dataset.toggleTask);b.disabled=true;await api(`/api/tasks/${t.id}`,'PUT',{...t,status:t.status==='done'?'todo':'done'});await refresh();return;}
+    if(b.dataset.toggleTask) {const t=S.tasks.find(t=>t.id===b.dataset.toggleTask);b.disabled=true;await api(`/api/tasks/${t.id}`,'PUT',{...t,status:t.status==='done'?'todo':'done'});if(t.status!=='done')celebrateDone();await refresh();return;}
     if(b.dataset.note) {activeNote=await api(`/api/notes/${b.dataset.note}`);page='note';return await renderPage();}
     const action=b.dataset.action;
     if(action==='close') return $('#modal').close();
@@ -596,7 +596,7 @@ document.addEventListener('change',async event=>{
     if(el.dataset.boardToggle!==undefined){await api('/api/board','PUT',{enabled:el.checked});boardInfo=await api('/api/board');toast(el.checked?'تاسكات الكلية هتتضاف أوتوماتيك':'وقفت إضافة تاسكات الكلية');return;}
     if(el.dataset.toggleTask){
       const task=S.tasks.find(t=>t.id===el.dataset.toggleTask);el.disabled=true;
-      try{await api(`/api/tasks/${task.id}`,'PUT',{...task,status:el.checked?'done':'todo'});await refresh();}
+      try{await api(`/api/tasks/${task.id}`,'PUT',{...task,status:el.checked?'done':'todo'});if(el.checked&&task.status!=='done')celebrateDone();await refresh();}
       catch(error){el.checked=task.status==='done';el.disabled=false;throw error;}return;
     }
     if(el.dataset.change==='plan-day'){if(!el.value)return;planDay=el.value;}
@@ -634,7 +634,9 @@ document.addEventListener('submit',async event=>{
         if(!response.ok){const error=await response.json();throw new Error(error.detail||'فشل رفع الملف');}
       }else{
         const table={course:'courses',task:'tasks',slot:'slots',note:'notes'}[type];
+        const before=type==='task'&&id?S.tasks.find(t=>t.id===id)?.status:'';
         const result=await api(`/api/${table}${id?'/'+id:''}`,id?'PUT':'POST',data);
+        if(type==='task'&&id&&data.status==='done'&&before!=='done')celebrateDone();
         if(type==='task'&&useDefault)await api('/api/preferences/tasks','PUT',{duration_minutes:data.duration_minutes});
         if(type==='note'&&page==='note')activeNote=await api('/api/notes/'+result.id);
         if(type==='course'&&!id){activeCourse=result.id;page='course';kind='all';selectedCourse='';}
@@ -761,11 +763,11 @@ const VoicePlayer = (() => {
     b.innerHTML = `<span class="vb-icon" aria-hidden="true">${I('clock')}</span><span class="vb-text"><b>${E(title || 'تذكير الديدلاين')}</b></span>${playing ? `<button type="button" class="button secondary" data-voice-stop>إيقاف الصوت</button>` : `<button type="button" class="button" data-voice-play="${E(url)}" data-voice-title="${E(title||'')}">شغّل الفويس</button>`}<button type="button" class="as-icon" data-voice-close aria-label="إغلاق"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button>`;
     b.hidden = false;
   }
-  async function play(url, title) {
+  async function play(url, title, autoHide=false) {
     if (!url || !url.startsWith('/api/voices/')) return;
     try { audio?.pause(); } catch {}
     audio = new Audio(url);
-    audio.addEventListener('ended', () => show(url, title, false));
+    audio.addEventListener('ended', () => autoHide ? hide() : show(url, title, false));
     try { await audio.play(); show(url, title, true); }
     catch { show(url, title, false); }   // autoplay blocked: one tap plays it
   }
@@ -773,7 +775,12 @@ const VoicePlayer = (() => {
   function hide() { stop(); const b = bar(); if (b) b.hidden = true; }
   return {play, stop, hide};
 })();
+// One of your "when you finish a task" clips, if you added any (the click that finished the task allows the sound).
+async function celebrateDone() {
+  try { const {url} = await api('/api/voices/pick/done'); if (url) VoicePlayer.play(url, L('برافو، خلّصت مهمة 🎉','Nice, task done 🎉'), true); } catch {}
+}
 function stageWhen(minutes) {
+  if (minutes === null) return 'بيشتغل لما تعلّم على مهمة إنها خلصت';
   if (minutes % 1440 === 0) return minutes === 1440 ? 'قبل الديدلاين بيوم' : `قبل الديدلاين بـ ${minutes/1440} أيام`;
   if (minutes % 60 === 0) return minutes === 60 ? 'قبل الديدلاين بساعة' : `قبل الديدلاين بـ ${minutes/60} ساعة`;
   return `قبل الديدلاين بـ ${minutes} دقيقة`;
@@ -782,14 +789,14 @@ function voicesView() {
   if (!voices) return '';
   const canRecord = !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
   return `<section class="settings-block voices"><h2>تذكيرات الديدلاين بصوتك</h2>
-    <p>أي مهمة ليها ديدلاين ولسه مخلصتش، هيوصلك عنها تذكير في كل مرحلة من دول. حط في كل مرحلة فويس أو أكتر، وكل تذكير هيشغّل واحد منهم عشوائي.</p>
+    <p>أي مهمة ليها ديدلاين ولسه مخلصتش، هيوصلك عنها تذكير في كل مرحلة من دول. حط في كل مرحلة فويس أو أكتر، وكل تذكير هيشغّل واحد منهم عشوائي. والمرحلة الأخيرة مش تذكير: الفويس بتاعها بيشتغل لما تخلّص مهمة.</p>
     ${voices.stages.map(s => `<div class="voice-stage">
       <div class="voice-head"><div><b>${E(s.title)}</b><small>${stageWhen(s.minutes)}</small></div><span class="tag">${s.clips.length} فويس</span></div>
       ${s.clips.length ? `<div class="voice-clips">${s.clips.map(c => `<div class="voice-clip"><button type="button" class="as-icon" data-voice-play="${E(c.url)}" data-voice-title="${E(s.title)}" aria-label="تشغيل"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg></button><span dir="auto">${E(c.name)}</span><button type="button" class="button ghost" data-voice-delete="${E(s.id)}" data-voice-file="${E(c.file)}">حذف</button></div>`).join('')}</div>` : `<p class="small muted">لسه مفيش فويسات هنا، فالتذكير هيوصل بصوت الإشعار العادي.</p>`}
       <div class="voice-actions">
         <label class="button secondary">${I('plus')} رفع فويس<input type="file" accept="audio/*" multiple data-voice-upload="${E(s.id)}" hidden></label>
         ${canRecord ? `<button type="button" class="button secondary ${recordStage===s.id?'recording':''}" data-voice-record="${E(s.id)}">${recordStage===s.id?'وقّف التسجيل واحفظ':'سجّل بصوتك'}</button>` : ''}
-        <button type="button" class="button ghost" data-voice-test="${E(s.id)}">جرّب المرحلة دي</button>
+        ${s.minutes === null ? '' : `<button type="button" class="button ghost" data-voice-test="${E(s.id)}">جرّب المرحلة دي</button>`}
       </div></div>`).join('')}
     <p class="small">على الموبايل، الإشعار نفسه بيرن بصوت الإشعارات العادي، لأن المتصفحات مش بتسمح بصوت مخصوص. لما تدوس على الإشعار، أو لو الموقع مفتوح، الفويس بتاعك بيشتغل على طول.</p>
   </section>`;
