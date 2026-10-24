@@ -470,6 +470,24 @@ def test_collect_finishes_expired_timers(personal):
     assert timer['state'] == 'finished' and timer['remaining_seconds'] == 0 and timer['finished_at'] == now - 10
 
 
+def test_timer_notification_carries_the_done_voice(personal, monkeypatch):
+    from studyhub import reminders
+    from studyhub.voices import folder
+    sent = []
+    monkeypatch.setattr(reminders, 'send_push', lambda sub, payload: sent.append(payload))
+    subscribe(personal)
+    now = time.time()
+    make_task(personal, timer={'state': 'running', 'run_id': 'run7', 'ends_at': now - 10, 'remaining_seconds': 30})
+    reminders.collect_jobs(now)
+    reminders.dispatch_job(deliveries()[0]['id'], now)
+    assert sent[0]['title'] == 'مساحتي — وقت الجلسة خلص' and sent[0]['voice'] == ''      # no clip yet: plain notification
+    (folder('done') / '1__yay.mp3').write_bytes(b'ID3')
+    make_task(personal, timer={'state': 'running', 'run_id': 'run8', 'ends_at': now - 5, 'remaining_seconds': 30})
+    reminders.collect_jobs(now)
+    reminders.dispatch_job(deliveries()[-1]['id'], now)
+    assert sent[-1]['voice'] == '/api/voices/done/1__yay.mp3'
+
+
 def test_dispatch_cancels_when_task_is_done(personal, monkeypatch):
     from studyhub import reminders
     from studyhub.app import get, put

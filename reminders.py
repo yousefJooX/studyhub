@@ -207,6 +207,9 @@ def dispatch_job(job_id, now):
         current = next((s for s in stages() if s['id'] == stage_id), {'title': 'الديدلاين قرّب'})
         payload |= {'title': 'مساحتي — ' + current['title'], 'tag': 'studyhub-deadline-' + task['id'],
                     'voice': pick_voice(stage_id), 'stage': stage_id}
+    elif job['kind'] == 'timer':
+        from .voices import pick_voice
+        payload['voice'] = pick_voice('done')  # your "finished" clip, when you added one
     try:
         send_push(subscription, payload)
         result = 'sent'

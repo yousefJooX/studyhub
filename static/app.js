@@ -385,7 +385,7 @@ function updateTimerDisplays() {
   for(const task of S.tasks){
     const timer=task.timer||{};
     if(task.status!=='done' && timer.state==='running' && timerSeconds(task)===0 && !finishedTimers.has(timer.run_id)){
-      finishedTimers.add(timer.run_id);toast('جلسة «'+task.title+'» خلصت. خُد استراحة أو كمّل المهمة.');
+      finishedTimers.add(timer.run_id);toast('جلسة «'+task.title+'» خلصت. خُد استراحة أو كمّل المهمة.');celebrateDone(L('الجلسة خلصت 🎉','Session done 🎉'));
       for(const box of document.querySelectorAll('[data-timer-box]'))if(box.dataset.timerBox===task.id)box.innerHTML=timerControls(task,!box.closest('#entry-form'));
     }
   }
@@ -763,8 +763,13 @@ const VoicePlayer = (() => {
     b.innerHTML = `<span class="vb-icon" aria-hidden="true">${I('clock')}</span><span class="vb-text"><b>${E(title || 'تذكير الديدلاين')}</b></span>${playing ? `<button type="button" class="button secondary" data-voice-stop>إيقاف الصوت</button>` : `<button type="button" class="button" data-voice-play="${E(url)}" data-voice-title="${E(title||'')}">شغّل الفويس</button>`}<button type="button" class="as-icon" data-voice-close aria-label="إغلاق"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button>`;
     b.hidden = false;
   }
+  let lastDone = 0;
   async function play(url, title, autoHide=false) {
     if (!url || !url.startsWith('/api/voices/')) return;
+    if (url.startsWith('/api/voices/done/')) {   // the page and the timer's notification can both ask for it: play once
+      if (Date.now() - lastDone < 15000) return;
+      lastDone = Date.now(); autoHide = true;
+    }
     try { audio?.pause(); } catch {}
     audio = new Audio(url);
     audio.addEventListener('ended', () => autoHide ? hide() : show(url, title, false));
@@ -776,11 +781,11 @@ const VoicePlayer = (() => {
   return {play, stop, hide};
 })();
 // One of your "when you finish a task" clips, if you added any (the click that finished the task allows the sound).
-async function celebrateDone() {
-  try { const {url} = await api('/api/voices/pick/done'); if (url) VoicePlayer.play(url, L('برافو، خلّصت مهمة 🎉','Nice, task done 🎉'), true); } catch {}
+async function celebrateDone(title) {
+  try { const {url} = await api('/api/voices/pick/done'); if (url) VoicePlayer.play(url, title || L('برافو، خلّصت مهمة 🎉','Nice, task done 🎉'), true); } catch {}
 }
 function stageWhen(minutes) {
-  if (minutes === null) return 'بيشتغل لما تعلّم على مهمة إنها خلصت';
+  if (minutes === null) return 'بيشتغل لما تعلّم على مهمة إنها خلصت، أو لما تايمر الجلسة يخلص';
   if (minutes % 1440 === 0) return minutes === 1440 ? 'قبل الديدلاين بيوم' : `قبل الديدلاين بـ ${minutes/1440} أيام`;
   if (minutes % 60 === 0) return minutes === 60 ? 'قبل الديدلاين بساعة' : `قبل الديدلاين بـ ${minutes/60} ساعة`;
   return `قبل الديدلاين بـ ${minutes} دقيقة`;
