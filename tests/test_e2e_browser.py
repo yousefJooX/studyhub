@@ -548,3 +548,31 @@ def test_finishing_a_task_plays_your_done_voice(server, browser):
     assert page.locator('#voice-banner:not([hidden])').count() == 1
     context.close()
     assert not problems, problems
+
+
+def test_overview_timer_card_follows_the_running_task(server, browser):
+    context = browser.new_context(viewport={'width': 1366, 'height': 900})
+    page = context.new_page()
+    problems = watch(page)
+    signup(page, server, college=False)
+    assert page.locator('.focus-now').count() == 0                               # no timer, no card
+    page.evaluate("""async () => {
+        for (const title of ['Selected robot', 'Lab report']) await api('/api/tasks', 'POST', {title, planned_date: todayDate()});
+        await refresh();
+        const robot = S.tasks.find(t => t.title === 'Selected robot');
+        await api(`/api/tasks/${robot.id}/timer`, 'POST', {action: 'start'}); await refresh();
+    }""")
+    assert page.locator('.focus-now-title').inner_text() == 'Selected robot'
+    assert page.locator('.focus-now .timer-count').inner_text() in ('25:00', '24:59', '24:58')
+    page.locator('.focus-now [data-action="timer-pause"]').click()
+    page.wait_for_selector('.focus-now.paused')                                  # paused: it stays, ready to continue
+    page.evaluate("""async () => { const lab = S.tasks.find(t => t.title === 'Lab report');
+        await api(`/api/tasks/${lab.id}/timer`, 'POST', {action: 'start'}); await refresh(); }""")
+    assert page.locator('.focus-now-title').inner_text() == 'Lab report'         # a new timer takes the card
+    page.evaluate('() => { clockOffset += 26 * 60 * 1000; updateTimerDisplays(); }')  # the session runs out
+    page.wait_for_function("() => document.querySelector('.focus-now-title')?.textContent === 'Selected robot'")
+    # (refresh() puts the page's clock back in step with the server, where Lab report is still running)
+    page.evaluate("""async () => { for (const t of S.tasks) await api(`/api/tasks/${t.id}`, 'PUT', {...t, status: 'done'}); await refresh(); }""")
+    assert page.locator('.focus-now').count() == 0                               # every task done: gone
+    context.close()
+    assert not problems, problems

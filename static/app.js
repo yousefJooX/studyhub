@@ -140,12 +140,34 @@ function dayView() {
     `<div class="reminder-banner"><div><b>${devicePush?'تذكيرات الجهاز مفعّلة':'خلي مهامك تفكّرك'}</b><p>${devicePush?'اضبط وقت التذكير داخل المهمة. انتهاء التايمر له إشعار كمان.':'فعّل إشعارات الجهاز، وبعدها اختار وقت تذكير لكل مهمة.'}</p></div>${act(devicePush?'notification-settings':'enable-notifications',devicePush?'إعدادات التذكيرات':'تفعيل تذكيرات الجهاز','button secondary')}</div>`+
     `<section class="panel"><form id="quick-task-form" class="quick-task"><input name="title" required maxlength="300" placeholder="أضف خطوة لليوم ده…" aria-label="مهمة سريعة لليوم"><button type="submit" class="button">${I('plus')} إضافة</button><div class="error" role="alert"></div></form>${tasks.length?taskRows(tasks):empty('يوم جديد، قائمة جديدة','أضف مهمة من فوق، أو افتح تفاصيل مهمة وغيّر يوم تنفيذها.','task','أضف أول مهمة')}</section>`;
 }
+// The task whose timer you started last, while it runs or is paused; it goes away when the session ends or the task is done.
+function focusNow() {
+  const live=S.tasks.filter(t=>t.status!=='done'&&['running','paused'].includes(t.timer?.state)&&!(t.timer.state==='running'&&timerSeconds(t)===0));
+  const running=live.filter(t=>t.timer.state==='running').sort((a,b)=>(b.timer.segment_start||0)-(a.timer.segment_start||0));
+  const paused=live.filter(t=>t.timer.state==='paused').sort((a,b)=>(b.updated||0)-(a.updated||0));
+  return {task:running[0]||paused[0], others:Math.max(0,running.length-1)};
+}
+function timerProgress(t) {
+  const total=(t.duration_minutes||25)*60;
+  return Math.min(1,Math.max(0,1-timerSeconds(t)/total));
+}
+function focusNowView() {
+  const {task:t,others}=focusNow();
+  if(!t) return '';
+  const running=t.timer.state==='running', course=S.courses.find(c=>c.id===t.course_id)?.title||t.board?.course||'';
+  return `<section class="panel focus-now ${running?'running':'paused'}" aria-label="${E(L('التايمر الشغّال','Running timer'))}"><div class="focus-now-body">
+    <div class="focus-now-copy"><span class="tag ${running?'green':''}">${running?L('شغّال دلوقتي','Focusing now'):L('متوقف مؤقتًا','Paused')}</span>
+      <button type="button" class="focus-now-title" dir="auto" data-edit-task="${E(t.id)}">${E(t.title)}</button>
+      ${course?`<small dir="auto">${E(course)}</small>`:''}${others?`<small class="muted">${L(`و${others} تايمر تاني شغال`,`and ${others} more running`)}</small>`:''}</div>
+    <div class="focus-now-clock" data-timer-box="${E(t.id)}">${timerControls(t)}</div></div>
+    <div class="focus-now-track" aria-hidden="true"><span data-timer-progress="${E(t.id)}" style="transform:scaleX(${timerProgress(t).toFixed(4)})"></span></div></section>`;
+}
 function homeView() {
   const open = S.tasks.filter(t=>t.status!=='done');
   const overdue = open.filter(t=>t.due && new Date(t.due)<new Date());
   const daily = dayTasks(todayDate()).slice(0,5);
   const slots = S.slots.filter(s=>s.day===dayIndex()).sort((a,b)=>a.start.localeCompare(b.start));
-  return heading(firstName() ? `أهلًا يا ${firstName()}` : 'أهلًا بيك','يوم جديد للتعلّم. خد نظرة على يومك، وابدأ بخطوة واحدة.',act('task',I('plus')+' مهمة جديدة')) +
+  return heading(firstName() ? `أهلًا يا ${firstName()}` : 'أهلًا بيك','يوم جديد للتعلّم. خد نظرة على يومك، وابدأ بخطوة واحدة.',act('task',I('plus')+' مهمة جديدة')) + focusNowView() +
     `<div class="stats">${[['موادي',S.courses.length,'كلية وتعلّم شخصي','book'],['مهام مفتوحة',open.length,'خطواتك الجاية','task'],['متأخر عن موعده',overdue.length,overdue.length?'محتاجين منك مراجعة':'مافيش مهام متأخرة','clock'],['ملفات الـVault',S.vault_count,`${S.vault_notes} نوتس ضمن الملفات`,'file']].map(([a,b,c,i],n)=>`<div class="stat ${n===2&&b?'urgent':''}"><div class="stat-top">${a}${I(i)}</div><b>${b}</b><small>${c}</small></div>`).join('')}</div>` + (window.StudyExtra?.homeStrip()||'') +
     `<div class="dashboard-grid"><section class="panel"><div class="panel-head"><h2>قائمة النهارده</h2><button class="button ghost" data-page="day">اختار يوم تاني ←</button></div>${daily.length?taskRows(daily):empty('ابدأ بأول مهمة لليوم','محاضرة تذاكرها، واجب تسلّمه، أو كورس تكمّله.','task','أضف مهمة')}</section><div class="stack"><section class="panel"><div class="panel-head"><h2>جدول النهارده</h2><span class="today-date">${dayNames[dayIndex()]}</span></div><div class="panel-body">${slots.length?slots.map(s=>`<div class="schedule-item"><div class="schedule-time">${E(s.start)}<small>${E(s.end)}</small></div><div class="schedule-copy"><b>${E(s.title)}</b><small>${typeNames[s.kind]} · ${E(s.location || courseName(s.course_id))}</small></div></div>`).join(''):empty('يومك لسه مفتوح','حدّد مواعيد الكلية والمذاكرة.','slot','أضف ميعاد')}</div></section><section class="library-summary"><div class="label">CONNECTED TO OBSIDIAN</div><h2>نوتسك قريبة منك.</h2><p>${S.vault_available?`${S.mounts.map(E).join('، ')} · ${S.vault_count} ملف متاح للتصفح`:'اربط نسخة فولدراتك على السيرفر لفتحها من أي جهاز.'}</p><button class="button" data-page="library">افتح مكتبتي ${I('arrow')}</button></section></div></div>`+
     (S.college?.college ? `<section class="panel board-news" id="board-news"><div class="panel-head"><h2>إعلانات الكلية</h2><a class="button ghost" data-board-link target="_blank" rel="noopener noreferrer" hidden>كل البوستات ←</a></div><div class="board-news-body"><div class="loading">بنجيب آخر إعلانات قناة الدفعة…</div></div></section>` : '') +
@@ -382,11 +404,16 @@ function updateTimerDisplays() {
     const task=S.tasks.find(t=>t.id===node.dataset.countdown);
     if(task)node.textContent=clockText(timerSeconds(timerPreview(task,node.closest('[data-timer-box]'))));
   }
+  for(const bar of document.querySelectorAll('[data-timer-progress]')){
+    const task=S.tasks.find(t=>t.id===bar.dataset.timerProgress);
+    if(task)bar.style.transform=`scaleX(${timerProgress(task).toFixed(4)})`;
+  }
   for(const task of S.tasks){
     const timer=task.timer||{};
     if(task.status!=='done' && timer.state==='running' && timerSeconds(task)===0 && !finishedTimers.has(timer.run_id)){
       finishedTimers.add(timer.run_id);toast('جلسة «'+task.title+'» خلصت. خُد استراحة أو كمّل المهمة.');celebrateDone(L('الجلسة خلصت 🎉','Session done 🎉'));
       for(const box of document.querySelectorAll('[data-timer-box]'))if(box.dataset.timerBox===task.id)box.innerHTML=timerControls(task,!box.closest('#entry-form'));
+      if(page==='home'&&!$('#modal').open)renderPage();   // the overview's timer card goes away with the session
     }
   }
   const running=S.tasks.find(t=>t.timer?.state==='running'&&timerSeconds(t)>0&&t.status!=='done');
