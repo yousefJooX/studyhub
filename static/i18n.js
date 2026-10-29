@@ -11,14 +11,28 @@
   let lang = 'ar';
   try { lang = localStorage.getItem('studyhub-lang') === 'en' ? 'en' : 'ar'; } catch {}
   const tr = text => /[\u0600-\u06FF]/.test(text) ? text.replace(pattern, m => EN[m]).replace(/[\u0660-\u0669]/g, d => String(d.charCodeAt(0) - 0x0660)).replace(/،/g, ',').replace(/[←→]/g, a => a === '←' ? '→' : '←') : text;
+  // What this script wrote last into each text node / attribute. Translating is not idempotent (it flips
+  // arrows, and user text can keep Arabic it never translates), so re-translating its own output under the
+  // MutationObserver could loop forever: e.g. a task "Mongo → Postgres: كود" in a checkbox's aria-label.
+  const wroteText = new WeakMap(), wroteAttr = new WeakMap();
+  const setText = (n, t) => { wroteText.set(n, t); n.nodeValue = t; };
+  const textOf = n => { if (wroteText.get(n) === n.nodeValue) return; const t = tr(n.nodeValue); if (t !== n.nodeValue) setText(n, t); };
+  function attrOf(el, a) {
+    const v = el.getAttribute && el.getAttribute(a);
+    if (!v || el.closest('.prose,[data-reader]')) return;
+    const mine = wroteAttr.get(el) || {};
+    if (mine[a] === v) return;
+    const t = tr(v);
+    if (t !== v) { mine[a] = t; wroteAttr.set(el, mine); el.setAttribute(a, t); }
+  }
   function apply(root) {
     if (lang !== 'en' || !root) return;
-    if (root.nodeType === 3) { const p = root.parentElement; if (p && !p.closest(SKIP)) { const t = tr(root.nodeValue); if (t !== root.nodeValue) root.nodeValue = t; } return; }
+    if (root.nodeType === 3) { const p = root.parentElement; if (p && !p.closest(SKIP)) textOf(root); return; }
     if (root.nodeType !== 1 || root.closest?.(SKIP)) return;
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => n.parentElement && !n.parentElement.closest(SKIP) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT });
     const nodes = []; while (walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n => { const t = tr(n.nodeValue); if (t !== n.nodeValue) n.nodeValue = t; });
-    [root, ...root.querySelectorAll('*')].forEach(el => ATTRS.forEach(a => { const v = el.getAttribute && el.getAttribute(a); if (v && !el.closest('.prose,[data-reader]')) { const t = tr(v); if (t !== v) el.setAttribute(a, t); } }));
+    nodes.forEach(textOf);
+    [root, ...root.querySelectorAll('*')].forEach(el => ATTRS.forEach(a => attrOf(el, a)));
   }
   function setDocument() {
     const html = document.documentElement;

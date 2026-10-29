@@ -576,3 +576,22 @@ def test_overview_timer_card_follows_the_running_task(server, browser):
     assert page.locator('.focus-now').count() == 0                               # every task done: gone
     context.close()
     assert not problems, problems
+
+
+def test_english_tasks_page_with_arrow_and_arabic_in_a_title_does_not_freeze(server, browser):
+    # Regression: the translator flipped the arrow in a checkbox's aria-label ("إكمال … Mongo → Postgres: فرجة + نوتس"),
+    # the leftover Arabic made it translate its own output again, and the MutationObserver looped forever.
+    context = browser.new_context(viewport={'width': 1366, 'height': 900})
+    context.add_init_script("try{localStorage.setItem('studyhub-lang','en')}catch(e){}")
+    page = context.new_page()
+    page.set_default_timeout(8000)
+    problems = watch(page)
+    signup(page, server, college=False)
+    page.evaluate("""async () => { await api('/api/tasks', 'POST', {title: 'mini-RAG | 20 | Mongo → Postgres (1): فرجة + نوتس'}); await refresh(); }""")
+    page.locator('button.nav[data-page="tasks"]').click()
+    page.wait_for_selector('.task-row')
+    page.wait_for_timeout(1500)
+    assert page.evaluate('() => 1 + 1') == 2                                      # the page still answers
+    assert page.locator('.task-row input').first.get_attribute('aria-label').startswith('Complete ')
+    context.close()
+    assert not problems, problems
