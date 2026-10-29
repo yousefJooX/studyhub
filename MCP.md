@@ -1,7 +1,7 @@
 # StudyHub MCP server + API token
 
 StudyHub exposes an MCP endpoint so Claude (with your own Claude subscription) can read and
-update your tasks, timetable and notes. The same token also works as a Bearer token for every
+update your tasks, timetable, exams, flashcards and notes. The same token also works as a Bearer token for every
 `/api/...` endpoint (n8n, scripts, Claude Code).
 
 ## 1. Create the token (on the server)
@@ -38,6 +38,17 @@ Only a SHA-256 hash is stored in `config.json`.
 | create_course / create_slot | Add a course, or a weekly lecture/section/lab/study slot |
 | list_files | PDFs / slides / code in the course folders + uploads |
 | weekly_review | Focus minutes per day/course, done tasks, missed deadlines, streak (Sat–Fri) |
+| update_slot / delete_slot | Change or remove a weekly timetable slot (ids from get_schedule) |
+| list_exams | Upcoming exams with days left, type, place and weight (1–5) |
+| create_exam / update_exam / delete_exam | Add, change or remove an exam (a course, or a title for an exam without one) |
+| plan_study | Exam study plan: `apply=false` previews it, `apply=true` adds the sessions as tasks (the day before each exam is its final review) |
+| list_flashcards | Cards due today (or all), per course: use them to quiz the user |
+| create_flashcards | Add a batch of cards, e.g. written from a note; duplicates are skipped |
+| review_flashcard | Grade one card after the user answered (again / hard / good / easy); sets its next review |
+| task_timer | Start, pause or reset a task's focus timer |
+
+Ask Claude things like *"plan my exams, 3 hours a day, Friday off"*, *"make flashcards from my NLP lecture 3 note"*,
+*"quiz me on Computer Vision"*, *"move the Robotics lab to Tuesday 12–2"* or *"start a 50-minute timer on sheet 2"*.
 
 ## 4. API examples
 

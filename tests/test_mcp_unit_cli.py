@@ -36,7 +36,9 @@ def test_mcp_every_tool(users, env, tmp_path):
     assert mcp(client, 'initialize', {'protocolVersion': '2025-06-18'}, token)['result']['serverInfo']
     tools = {t['name'] for t in mcp(client, 'tools/list', token=token)['result']['tools']}
     assert tools == {'get_today', 'list_tasks', 'create_task', 'update_task', 'list_courses', 'get_schedule', 'search_notes',
-                     'read_note', 'create_note', 'list_files', 'weekly_review', 'create_course', 'create_slot'}
+                     'read_note', 'create_note', 'list_files', 'weekly_review', 'create_course', 'create_slot',
+                     'list_exams', 'create_exam', 'update_exam', 'delete_exam', 'plan_study', 'list_flashcards',
+                     'create_flashcards', 'review_flashcard', 'update_slot', 'delete_slot', 'task_timer'}
     course = call(client, token, 'create_course', title='NLP')
     task = call(client, token, 'create_task', title='Sheet 1', course='nlp', due='2030-01-01T23:59')['created']
     assert task['course'] == 'NLP'
@@ -55,6 +57,53 @@ def test_mcp_every_tool(users, env, tmp_path):
     denied = client.post('/mcp', json={'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'})
     assert denied.status_code == 401
     assert client.get('/mcp').status_code in (401, 405)
+
+
+def test_mcp_exams_plan_flashcards_slots_and_timer(users, env):
+    from datetime import date, timedelta
+    alice = users('alice2')
+    token = alice.post('/api/account/token').json()['token']
+    client = TestClient(app)
+    day = lambda n: (date.today() + timedelta(days=n)).isoformat()  # noqa: E731
+    call(client, token, 'create_course', title='Computer Vision')
+    # exams
+    exam = call(client, token, 'create_exam', course='vision', date=day(6), time='09:00', weight=5, location='Hall 3')['created']
+    assert exam['course'] == 'Computer Vision' and exam['label'] == 'Computer Vision · Final' and exam['days_left'] in (5, 6, 7)
+    other = call(client, token, 'create_exam', title='IELTS', date=day(9), kind='oral')['created']
+    assert call(client, token, 'update_exam', exam_id=other['id'], location='British Council')['updated']['location'] == 'British Council'
+    assert [e['id'] for e in call(client, token, 'list_exams')['exams']] == [exam['id'], other['id']]
+    # the study plan: a preview writes nothing, apply makes the tasks
+    preview = call(client, token, 'plan_study', minutes_per_day=100, session_minutes=50, rest_days=['Friday'])
+    assert preview['applied'] is False and preview['sessions'] > 0 and preview['first_days'] and 'apply=true' in preview['next_step']
+    assert call(client, token, 'list_tasks')['tasks'] == []
+    applied = call(client, token, 'plan_study', minutes_per_day=100, session_minutes=50, apply=True, language='en')
+    assert applied['created_tasks'] == applied['sessions'] and call(client, token, 'list_tasks', limit=200)['tasks'][0]['title'].startswith(('Study:', 'Final review:'))
+    assert call(client, token, 'delete_exam', exam_id=other['id'])['deleted']['title'] == 'IELTS'
+    # flashcards: write a batch, quiz from the due ones, grade one
+    made = call(client, token, 'create_flashcards', course='Computer Vision', cards=[
+        {'front': 'What does Sobel detect?', 'back': 'Edges'}, {'front': 'what does sobel detect?', 'back': 'dup'}, {'front': 'Harris R?', 'back': 'det(M) - k trace(M)^2'}])
+    assert made['added'] == 2 and made['skipped_duplicates'] == 1
+    due = call(client, token, 'list_flashcards', course='vision')
+    assert due['due_today'] == 2 and due['cards'][0]['front'] == 'What does Sobel detect?'
+    graded = call(client, token, 'review_flashcard', card_id=due['cards'][0]['id'], grade='good')
+    assert graded['next_review'] == (date.fromisoformat(due['cards'][0]['due']) + timedelta(days=1)).isoformat()
+    assert call(client, token, 'list_flashcards')['due_today'] == 1
+    # timetable: change and remove a slot
+    slot = call(client, token, 'create_slot', title='CV lecture', course='Computer Vision', day='Sunday', start='09:00', end='11:00')['created']
+    moved = call(client, token, 'update_slot', slot_id=slot['id'], day='Tuesday', start='12:00', end='14:00')['updated']
+    assert (moved['day'], moved['start'], moved['end'], moved['title']) == ('Tuesday', '12:00', '14:00', 'CV lecture')
+    assert call(client, token, 'delete_slot', slot_id=slot['id'])['deleted']['day'] == 'Tuesday'
+    assert call(client, token, 'get_schedule')['slots'] == []
+    # a task's focus timer
+    task = call(client, token, 'create_task', title='Read lecture 3')['created']
+    started = call(client, token, 'task_timer', task_id=task['id'], action='start', minutes=30)
+    assert started['timer'] == 'running' and started['updated']['status'] == 'doing' and started['updated']['duration_minutes'] == 30
+    assert call(client, token, 'task_timer', task_id=task['id'], action='pause')['timer'] == 'paused'
+    # bad input comes back as a tool error, not a crash
+    bad = mcp(client, 'tools/call', {'name': 'update_slot', 'arguments': {'slot_id': slot['id'], 'day': 'Funday'}}, token)['result']
+    assert bad['isError']
+    bad = mcp(client, 'tools/call', {'name': 'review_flashcard', 'arguments': {'card_id': due['cards'][0]['id'], 'grade': 'meh'}}, token)['result']
+    assert bad['isError']
 
 
 def test_markdown_renderer():

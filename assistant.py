@@ -182,7 +182,14 @@ def describe(name, args, outcome):
     item = result.get('created') or result.get('updated') or result.get('exists') or {}
     title = item.get('title', '')
     labels = {'create_task': 'مهمة جديدة', 'update_task': 'اتعدّلت مهمة', 'create_note': 'نوت جديدة',
-              'create_course': 'مادة جديدة' if 'created' in result else 'المادة موجودة', 'create_slot': 'ميعاد في الجدول'}
+              'create_course': 'مادة جديدة' if 'created' in result else 'المادة موجودة', 'create_slot': 'ميعاد في الجدول',
+              'create_exam': 'امتحان جديد', 'update_exam': 'اتعدّل امتحان', 'delete_exam': 'اتمسح امتحان',
+              'create_flashcards': 'كروت جديدة', 'review_flashcard': 'اتراجع كارت', 'update_slot': 'اتعدّل ميعاد',
+              'delete_slot': 'اتشال ميعاد', 'task_timer': 'التايمر'}
+    if name == 'plan_study' and result.get('applied'):
+        return {'tool': name, 'label': 'خطة المذاكرة', 'title': f"{result.get('created_tasks', 0)} جلسة", 'detail': f"{result.get('from', '')} → {result.get('to', '')}"}
+    item = item or result.get('deleted') or {}
+    title = item.get('title') or item.get('label', '')
     if name not in labels:
         return None
     extra = ''

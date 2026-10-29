@@ -26,10 +26,13 @@ PROTOCOL_VERSIONS = ('2025-06-18', '2025-03-26', '2024-11-05')
 SERVER_INFO = {'name': 'studyhub', 'title': 'StudyHub — مساحتي الدراسية', 'version': '1.0.0'}
 INSTRUCTIONS = (
     "StudyHub is the user's personal study workspace: university courses, tasks with deadlines, "
-    "a weekly timetable, Obsidian lecture notes and uploaded files. Times are Africa/Cairo. "
-    "Call get_today first for context. Prefer search_notes + read_note before answering questions "
-    "about course material, and cite the note title/path you used. Ask before deleting or "
-    "overwriting anything; create_task/create_note/update_task change real data."
+    "a weekly timetable, exams with a study plan, flashcards, Obsidian lecture notes and uploaded files. "
+    "Times are Africa/Cairo. Call get_today first for context. Prefer search_notes + read_note before "
+    "answering questions about course material, and cite the note title/path you used. "
+    "To build an exam plan, call plan_study with apply=false first, show the user the summary, and apply "
+    "only when they agree. To quiz the user, take cards from list_flashcards, ask the front, wait for "
+    "their answer, then record it with review_flashcard. Ask before deleting or overwriting anything "
+    "(delete_exam, delete_slot, update_*); every create_*/update_*/delete_* tool changes real data."
 )
 router = APIRouter()
 DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -352,6 +355,159 @@ def tool_create_slot(args):
     return {'created': slot_view(slot, courses)}
 
 
+# ---------------------------------------------------------------- exams, study plan, flashcards, timetable edits, timers
+
+def day_index(value):
+    names = [d.lower() for d in DAY_NAMES]
+    text = str(value).strip().lower()
+    if text in names:
+        return names.index(text)
+    if text.isdigit() and 0 <= int(text) <= 6:
+        return int(text)
+    raise ValueError(f'Unknown day "{value}". Use an English day name, e.g. "Sunday".')
+
+
+def exam_view(exam, courses):
+    from .exams import label
+    days = (date.fromisoformat(exam['date']) - now_cairo().date()).days
+    return {'id': exam['id'], 'label': label(exam, courses, 'en'), 'course': courses.get(exam.get('course_id', ''), {}).get('title', ''),
+            'title': exam.get('title', ''), 'kind': exam.get('kind', 'final'), 'date': exam['date'], 'time': exam.get('time', ''),
+            'days_left': days, 'duration_minutes': exam.get('duration_minutes', 120), 'location': exam.get('location', ''),
+            'weight': exam.get('weight', 3)}
+
+
+def tool_list_exams(args):
+    courses = course_index()
+    today = now_cairo().date().isoformat()
+    exams = [e for e in core.rows('exams') if args.get('include_past') or e['date'] >= today]
+    exams.sort(key=lambda e: (e['date'], e.get('time') or '99:99'))
+    return {'today': today, 'exams': [exam_view(e, courses) for e in exams]}
+
+
+EXAM_FIELDS = ('title', 'kind', 'date', 'time', 'duration_minutes', 'location', 'weight')
+
+
+def exam_body(existing, args, courses):
+    from .exams import Exam
+    data = {k: existing[k] for k in ('course_id', *EXAM_FIELDS) if k in existing}
+    if 'course' in args:
+        data['course_id'] = resolve_course(args['course'], courses)
+    data |= {k: args[k] for k in EXAM_FIELDS if k in args}
+    return Exam(**data)
+
+
+def tool_create_exam(args):
+    from .exams import save
+    courses = course_index()
+    if 'date' not in args:
+        raise ValueError('date is required (YYYY-MM-DD)')
+    exam = save(exam_body({}, args, courses))
+    return {'created': exam_view(exam, courses)}
+
+
+def tool_update_exam(args):
+    from .exams import save
+    courses = course_index()
+    existing = core.get('exams', args['exam_id'])
+    exam = save(exam_body(existing, args, courses), existing['id'])
+    return {'updated': exam_view(exam, courses)}
+
+
+def tool_delete_exam(args):
+    from .exams import delete_exam
+    courses = course_index()
+    exam = exam_view(core.get('exams', args['exam_id']), courses)
+    delete_exam(args['exam_id'])
+    return {'deleted': exam}
+
+
+def tool_plan_study(args):
+    from .exams import PlanRequest, make_plan
+    rest = [day_index(d) for d in args.get('rest_days', [])]
+    body = PlanRequest(minutes_per_day=args.get('minutes_per_day', 180), session_minutes=args.get('session_minutes', 50),
+                       rest_days=rest, dry_run=not args.get('apply', False), lang='en' if args.get('language') == 'en' else 'ar')
+    result = make_plan(body)
+    by_day = {}
+    for item in result.pop('preview', []):
+        by_day.setdefault(item['date'], []).append(item['kind'])
+    out = {'applied': bool(args.get('apply')), 'sessions': result['sessions'], 'days': result['days'],
+           'from': result['first'], 'to': result['last'], 'session_minutes': body.session_minutes,
+           'per_exam': [{'exam': x['label'], 'sessions': x['sessions'], 'hours': round(x['minutes'] / 60, 1)} for x in result['by_exam']]}
+    if not args.get('apply'):
+        out['first_days'] = [{'date': d, 'sessions': len(kinds), 'final_review': 'review' in kinds} for d, kinds in list(by_day.items())[:7]]
+        out['next_step'] = 'Show this to the user; call plan_study again with apply=true to add the sessions as tasks.'
+    else:
+        out['created_tasks'] = result.get('created', 0)
+        out['replaced_unfinished'] = result.get('removed', 0)
+    return out
+
+
+def card_view(card, courses):
+    return {'id': card['id'], 'front': card['front'], 'back': card['back'],
+            'course': courses.get(card.get('course_id', ''), {}).get('title', ''), 'due': card['due'],
+            'interval_days': card.get('interval', 0), 'reviews': card.get('reps', 0)}
+
+
+def tool_list_flashcards(args):
+    courses = course_index()
+    course_id = resolve_course(args.get('course', ''), courses)
+    today = now_cairo().date().isoformat()
+    cards = [c for c in core.rows('cards') if not course_id or c.get('course_id') == course_id]
+    due = [c for c in cards if c['due'] <= today]
+    pick = due if args.get('due_only', True) else cards
+    pick.sort(key=lambda c: (c['due'], c.get('created', 0)))
+    limit = max(1, min(int(args.get('limit', 20)), 100))
+    return {'total': len(cards), 'due_today': len(due), 'cards': [card_view(c, courses) for c in pick[:limit]]}
+
+
+def tool_create_flashcards(args):
+    from .cards import CardBatch, CardIn, add_cards
+    courses = course_index()
+    course_id = resolve_course(args.get('course', ''), courses)
+    cards = args.get('cards') or []
+    if not cards:
+        raise ValueError('cards must hold at least one {"front", "back"}')
+    result = add_cards(CardBatch(cards=[CardIn(front=str(c.get('front', '')), back=str(c.get('back', '')), course_id=course_id,
+                                              source='claude') for c in cards[:100]]))
+    return {'created': {'title': f"{result['added']} cards", 'course': courses.get(course_id, {}).get('title', '')},
+            'added': result['added'], 'skipped_duplicates': result['skipped']}
+
+
+def tool_review_flashcard(args):
+    from .cards import Review, review
+    courses = course_index()
+    card = review(args['card_id'], Review(grade=args['grade']))
+    return {'updated': card_view(card, courses) | {'title': card['front'][:60]}, 'next_review': card['due']}
+
+
+def tool_update_slot(args):
+    courses = course_index()
+    existing = core.get('slots', args['slot_id'])
+    data = {k: existing.get(k) for k in ('title', 'course_id', 'kind', 'day', 'start', 'end', 'location')}
+    if 'course' in args:
+        data['course_id'] = resolve_course(args['course'], courses)
+    if 'day' in args:
+        data['day'] = day_index(args['day'])
+    data |= {k: args[k] for k in ('title', 'kind', 'start', 'end', 'location') if k in args}
+    slot = core.save_entry('slots', core.Slot(**{k: v for k, v in data.items() if v is not None}), existing['id'])
+    return {'updated': slot_view(slot, courses)}
+
+
+def tool_delete_slot(args):
+    courses = course_index()
+    slot = slot_view(core.get('slots', args['slot_id']), courses)
+    core.delete_entry('slots', args['slot_id'])
+    return {'deleted': slot}
+
+
+def tool_task_timer(args):
+    courses = course_index()
+    action = args['action']
+    body = core.TimerAction(action=action, duration_minutes=args.get('minutes'))
+    task = core.task_timer(args['task_id'], body)
+    return {'updated': task_view(task, courses), 'timer': task.get('timer', {}).get('state')}
+
+
 def string(desc, **extra):
     return {'type': 'string', 'description': desc, **extra}
 
@@ -440,6 +596,77 @@ TOOLS = [
          'start': string('HH:MM 24h'), 'end': string('HH:MM 24h, after start'),
          'kind': string('lecture, section, lab or study', enum=['lecture', 'section', 'lab', 'study']),
          'location': string('Hall / lab name')}},
+     'annotations': {'readOnlyHint': False, 'destructiveHint': False}},
+    {'name': 'list_exams', 'title': 'List exams', 'handler': tool_list_exams,
+     'description': 'Upcoming exams with days left, course, type, place and how heavy each one is (weight 1-5).',
+     'inputSchema': {'type': 'object', 'properties': {'include_past': {'type': 'boolean', 'default': False}}},
+     'annotations': {'readOnlyHint': True}},
+    {'name': 'create_exam', 'title': 'Add exam', 'handler': tool_create_exam,
+     'description': 'Add an exam to the exam timetable. Give a course, or a title for an exam without a course.',
+     'inputSchema': {'type': 'object', 'required': ['date'], 'properties': {
+         'course': COURSE, 'title': string('Exam name when it has no course, e.g. "IELTS"'),
+         'kind': string('final (default), midterm, quiz, practical or oral', enum=['final', 'midterm', 'quiz', 'practical', 'oral']),
+         'date': string('YYYY-MM-DD'), 'time': string('Start time HH:MM 24h, optional'),
+         'duration_minutes': {'type': 'integer', 'minimum': 0, 'maximum': 600},
+         'location': string('Hall / room'), 'weight': {'type': 'integer', 'minimum': 1, 'maximum': 5, 'description': 'How heavy: 1 light … 5 very heavy (default 3)'}}},
+     'annotations': {'readOnlyHint': False, 'destructiveHint': False}},
+    {'name': 'update_exam', 'title': 'Change exam', 'handler': tool_update_exam,
+     'description': 'Change an exam (date, time, place, weight…). Only the fields you pass change.',
+     'inputSchema': {'type': 'object', 'required': ['exam_id'], 'properties': {
+         'exam_id': string('Exam id from list_exams'), 'course': COURSE, 'title': string('Exam name'),
+         'kind': string('final, midterm, quiz, practical or oral', enum=['final', 'midterm', 'quiz', 'practical', 'oral']),
+         'date': string('YYYY-MM-DD'), 'time': string('HH:MM or "" for no time'),
+         'duration_minutes': {'type': 'integer', 'minimum': 0, 'maximum': 600}, 'location': string('Hall / room'),
+         'weight': {'type': 'integer', 'minimum': 1, 'maximum': 5}}},
+     'annotations': {'readOnlyHint': False, 'destructiveHint': False, 'idempotentHint': True}},
+    {'name': 'delete_exam', 'title': 'Delete exam', 'handler': tool_delete_exam,
+     'description': 'Remove an exam from the timetable. Ask the user first.',
+     'inputSchema': {'type': 'object', 'required': ['exam_id'], 'properties': {'exam_id': string('Exam id from list_exams')}},
+     'annotations': {'readOnlyHint': False, 'destructiveHint': True}},
+    {'name': 'plan_study', 'title': 'Exam study plan', 'handler': tool_plan_study,
+     'description': 'Spread study sessions over the days left before the upcoming exams (the day before each exam is its final review). '
+                    'apply=false (default) only previews; apply=true adds the sessions as tasks and replaces the unfinished part of an older plan.',
+     'inputSchema': {'type': 'object', 'properties': {
+         'minutes_per_day': {'type': 'integer', 'minimum': 25, 'maximum': 720, 'default': 180},
+         'session_minutes': {'type': 'integer', 'minimum': 15, 'maximum': 180, 'default': 50},
+         'rest_days': {'type': 'array', 'items': string('Day name, e.g. "Friday"', enum=DAY_NAMES), 'description': 'Days with no sessions'},
+         'apply': {'type': 'boolean', 'default': False},
+         'language': string('Language of the session titles: ar (default) or en', enum=['ar', 'en'])}},
+     'annotations': {'readOnlyHint': False, 'destructiveHint': False}},
+    {'name': 'list_flashcards', 'title': 'List flashcards', 'handler': tool_list_flashcards,
+     'description': 'Flashcards (spaced repetition). By default only the cards due today, oldest first: use them to quiz the user.',
+     'inputSchema': {'type': 'object', 'properties': {
+         'course': COURSE, 'due_only': {'type': 'boolean', 'default': True},
+         'limit': {'type': 'integer', 'minimum': 1, 'maximum': 100, 'default': 20}}},
+     'annotations': {'readOnlyHint': True}},
+    {'name': 'create_flashcards', 'title': 'Create flashcards', 'handler': tool_create_flashcards,
+     'description': 'Add flashcards, e.g. written from a note you read with read_note. One fact per card, a question that stands alone, a short answer. Duplicates are skipped.',
+     'inputSchema': {'type': 'object', 'required': ['cards'], 'properties': {
+         'course': COURSE,
+         'cards': {'type': 'array', 'minItems': 1, 'maxItems': 100, 'items': {'type': 'object', 'required': ['front', 'back'], 'properties': {
+             'front': string('The question'), 'back': string('The answer')}}}}},
+     'annotations': {'readOnlyHint': False, 'destructiveHint': False}},
+    {'name': 'review_flashcard', 'title': 'Grade a flashcard', 'handler': tool_review_flashcard,
+     'description': 'Record how the user did on one card after they answered: again (wrong), hard, good or easy. This sets when the card comes back.',
+     'inputSchema': {'type': 'object', 'required': ['card_id', 'grade'], 'properties': {
+         'card_id': string('Card id from list_flashcards'), 'grade': string('again, hard, good or easy', enum=['again', 'hard', 'good', 'easy'])}},
+     'annotations': {'readOnlyHint': False, 'destructiveHint': False}},
+    {'name': 'update_slot', 'title': 'Change timetable slot', 'handler': tool_update_slot,
+     'description': 'Change a weekly timetable slot (day, time, place, type…). Only the fields you pass change. Slot ids come from get_schedule.',
+     'inputSchema': {'type': 'object', 'required': ['slot_id'], 'properties': {
+         'slot_id': string('Slot id from get_schedule'), 'title': string('Slot title'), 'course': COURSE,
+         'day': string('Day name in English', enum=DAY_NAMES), 'start': string('HH:MM 24h'), 'end': string('HH:MM 24h'),
+         'kind': string('lecture, section, lab or study', enum=['lecture', 'section', 'lab', 'study']), 'location': string('Hall / lab name')}},
+     'annotations': {'readOnlyHint': False, 'destructiveHint': False, 'idempotentHint': True}},
+    {'name': 'delete_slot', 'title': 'Remove timetable slot', 'handler': tool_delete_slot,
+     'description': 'Remove a weekly timetable slot. Ask the user first.',
+     'inputSchema': {'type': 'object', 'required': ['slot_id'], 'properties': {'slot_id': string('Slot id from get_schedule')}},
+     'annotations': {'readOnlyHint': False, 'destructiveHint': True}},
+    {'name': 'task_timer', 'title': 'Task focus timer', 'handler': tool_task_timer,
+     'description': "Start, pause or reset a task's focus timer (the time counts in the weekly review). minutes sets a new length.",
+     'inputSchema': {'type': 'object', 'required': ['task_id', 'action'], 'properties': {
+         'task_id': string('Task id from list_tasks/get_today'), 'action': string('start, pause or reset', enum=['start', 'pause', 'reset']),
+         'minutes': {'type': 'integer', 'minimum': 1, 'maximum': 1440, 'description': 'Session length; only when starting fresh or resetting'}}},
      'annotations': {'readOnlyHint': False, 'destructiveHint': False}},
 ]
 TOOL_INDEX = {t['name']: t for t in TOOLS}
