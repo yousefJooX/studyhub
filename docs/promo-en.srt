@@ -1,0 +1,99 @@
+1
+00:00:00,366 --> 00:00:01,536
+This is StudyHub.
+
+2
+00:00:01,556 --> 00:00:04,517
+Your courses, tasks, exams, grades and
+
+3
+00:00:04,537 --> 00:00:06,986
+notes, all in one calm place.
+
+4
+00:00:07,866 --> 00:00:09,457
+Add your exam timetable.
+
+5
+00:00:09,477 --> 00:00:11,873
+StudyHub counts down every exam, and
+
+6
+00:00:11,893 --> 00:00:13,567
+plans your study days in one
+
+7
+00:00:13,587 --> 00:00:14,414
+click.
+
+8
+00:00:19,866 --> 00:00:21,409
+Your plan lands in My day.
+
+9
+00:00:21,429 --> 00:00:23,007
+Start a session, and the focus
+
+10
+00:00:23,027 --> 00:00:25,164
+timer follows you on the overview.
+
+11
+00:00:30,366 --> 00:00:32,594
+Turn your notes into flashcards, and
+
+12
+00:00:32,614 --> 00:00:34,409
+review them on a smart schedule,
+
+13
+00:00:34,429 --> 00:00:35,616
+just like Anki.
+
+14
+00:00:40,366 --> 00:00:43,351
+Track your college grades: sheets, quizzes,
+
+15
+00:00:43,371 --> 00:00:45,046
+the midterm and the final, with
+
+16
+00:00:45,066 --> 00:00:46,428
+your total so far.
+
+17
+00:00:46,448 --> 00:00:47,822
+Or send Claude a screenshot of
+
+18
+00:00:47,842 --> 00:00:49,709
+your grade sheet, and it records
+
+19
+00:00:49,729 --> 00:00:50,736
+every grade.
+
+20
+00:00:53,366 --> 00:00:54,656
+You can also ask the assistant
+
+21
+00:00:54,676 --> 00:00:55,834
+in plain words.
+
+22
+00:00:55,854 --> 00:00:57,084
+It adds the task and the
+
+23
+00:00:57,104 --> 00:00:58,700
+lab to your timetable.
+
+24
+00:01:04,914 --> 00:01:07,238
+Free, open source, and yours.
+
+25
+00:01:07,258 --> 00:01:08,431
+StudyHub.

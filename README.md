@@ -13,6 +13,12 @@ The friends site is live at **https://studyhub.taila6871a.ts.net**. Open it, cre
 
 ## Video walkthrough
 
+### StudyHub in a minute (English)
+
+[![StudyHub in a minute: exams and the study plan, the focus timer, flashcards, college grades and the assistant](docs/video/poster-promo.jpg)](docs/promo-en.mp4)
+
+Exams and a one-click study plan, the focus timer, flashcards, **college grades** (and Claude recording them from a screenshot over MCP) and the assistant, in 72 seconds. Captions: [promo-en.srt](docs/promo-en.srt) · Transcript: [promo-transcript-en.md](docs/promo-transcript-en.md). Made with [HyperFrames](https://github.com/heygen-com/hyperframes) from real StudyHub footage.
+
 ### For everyone (4 minutes)
 
 
@@ -20,7 +26,7 @@ The friends site is live at **https://studyhub.taila6871a.ts.net**. Open it, cre
 https://github.com/user-attachments/assets/f4aa1937-b32c-4c3b-8485-3dd897fb981b
 
 
-Sign up, courses, the weekly timetable, tasks and deadline reminders, **exams and a one-click study plan**, **college grades**, the focus timer, **flashcards from your Obsidian notes**, **competitive programming (Codeforces + LeetCode)**, the AI assistant with a free Groq key, Obsidian notes, the weekly review, **the calendar link**, **sharing a course** and **the dark theme**.
+Sign up, courses, the weekly timetable, tasks and deadline reminders, **exams and a one-click study plan**, the focus timer, **flashcards from your Obsidian notes**, **competitive programming (Codeforces + LeetCode)**, the AI assistant with a free Groq key, Obsidian notes, the weekly review, **the calendar link**, **sharing a course** and **the dark theme**.
 
 ### For HNU FCSIT students (2½ minutes)
 
