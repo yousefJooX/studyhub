@@ -1027,6 +1027,15 @@ def home():
     return HTMLResponse((STATIC / 'index.html').read_text(encoding='utf-8').replace('__ORIGIN__', origin))
 
 
+@app.get('/.well-known/discord')
+def discord_domain():
+    # Discord "Connect your Domain" HTTP check; for hosts like *.ts.net where a DNS TXT record is impossible.
+    token = os.environ.get('STUDY_DISCORD_VERIFY', '').strip()
+    if not token:
+        raise HTTPException(404)
+    return Response(token, media_type='text/plain')
+
+
 @app.get('/sw.js')
 def service_worker():
     return FileResponse(STATIC / 'sw.js', media_type='application/javascript', headers={'Service-Worker-Allowed': '/'})

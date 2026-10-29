@@ -121,6 +121,7 @@ Settings live in `config.json` (path from `STUDY_CONFIG_FILE`, mode 600) or in e
 | `STUDY_DATA_DIR` | Data folder (SQLite, uploads, vault, voice clips) |
 | `STUDY_PUBLIC_ORIGIN` | Public HTTPS address (used for CORS, the MCP URL and Web Push) |
 | `STUDY_OWNER_NAME` | Name shown in the greeting on the personal site |
+| `STUDY_DISCORD_VERIFY` | Discord domain-connection code (`dh=…`), served at `/.well-known/discord` |
 | `STUDY_VAULT_ROOT`, `ARCHIVE_DATA_DIR` | Obsidian vault copy and the shared college archive |
 | `STUDY_LLM_BASE_URL`, `STUDY_LLM_API_KEY`, `STUDY_LLM_MODEL` | Assistant model; set them with `python -m studyhub llm` |
 | `STUDY_LLM_FALLBACK_*` | Optional second provider |
