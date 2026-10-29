@@ -14,7 +14,7 @@ from .conftest import ROOT
 
 playwright = pytest.importorskip('playwright.sync_api')
 ARABIC = re.compile(r'[؀-ۿ]{2,}')
-PAGES = ['home', 'day', 'courses', 'tasks', 'schedule', 'exams', 'review', 'weekly', 'library', 'settings']
+PAGES = ['home', 'day', 'courses', 'tasks', 'schedule', 'exams', 'grades', 'review', 'weekly', 'library', 'settings']
 
 
 def free_port():
@@ -518,6 +518,42 @@ def test_exam_plan_and_flashcards_flow(server, browser):
     page.click('[data-action="x-calendar-new"]')
     url = page.input_value('#calendar-url')
     assert url.endswith('.ics') and 'Physics final' in context.request.get(url).text()
+    context.close()
+    assert not problems, problems
+
+
+def test_grades_page_records_sheets_and_totals(server, browser):
+    context = browser.new_context(viewport={'width': 1366, 'height': 900})
+    context.add_init_script("try{localStorage.setItem('studyhub-lang','en')}catch(e){}")
+    page = context.new_page()
+    problems = watch(page)
+    signup(page, server, college=False)
+    page.locator('button.nav[data-page="grades"]').click()
+    page.wait_for_selector('[data-action="college-course"]')                    # no college course yet: says so
+    page.evaluate("""async () => { await api('/api/courses', 'POST', {title: 'Robot Arms', kind: 'college'});
+        await api('/api/courses', 'POST', {title: 'Guitar', kind: 'personal'}); await refresh(); }""")
+    assert page.locator('.grade-course').count() == 1                            # personal courses have no grades
+    page.click('.grade-kind .empty-chip[data-kind="sheet"]')
+    page.fill('#grade-form input[name="score"]', '8')
+    page.fill('#grade-form input[name="out_of"]', '10')
+    page.click('#grade-form button[type=submit]')
+    page.wait_for_selector('.grade-chip:not(.empty-chip)')
+    assert page.locator('.grade-chip:not(.empty-chip)').inner_text().replace('\n', ' ') == 'Sheet 1 8/10'
+    page.click('[data-action="x-grade"] >> nth=0')
+    page.select_option('#grade-form select[name="kind"]', 'midterm')
+    page.fill('#grade-form input[name="score"]', '18')
+    page.fill('#grade-form input[name="out_of"]', '20')
+    page.click('#grade-form button[type=submit]')
+    page.wait_for_function("() => document.querySelector('.grade-total b')?.textContent === '26 / 30'")
+    page.click('[data-action="x-grade-split"]')
+    for name, value in (('sheet', '10'), ('quiz', '10'), ('midterm', '20'), ('final', '60')):
+        page.fill(f'#split-form input[name="{name}"]', value)
+    page.click('#split-form button[type=submit]')
+    page.wait_for_function("() => document.querySelector('.grade-total small')?.textContent.includes('of 100')")
+    assert page.locator('.grade-total b').inner_text() == '26 / 30' and page.locator('.grade-percent').inner_text() == '87%'
+    page.click('.grade-chip:not(.empty-chip) >> nth=0')
+    page.click('#modal [data-action="x-grade-delete"]')
+    page.wait_for_function("() => document.querySelector('.grade-total b')?.textContent === '18 / 20'")
     context.close()
     assert not problems, problems
 

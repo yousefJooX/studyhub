@@ -74,6 +74,7 @@ def database():
             CREATE TABLE IF NOT EXISTS study_sessions(id TEXT PRIMARY KEY, data TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS exams(id TEXT PRIMARY KEY, data TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS cards(id TEXT PRIMARY KEY, data TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS grades(id TEXT PRIMARY KEY, data TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS reminder_deliveries(id TEXT PRIMARY KEY, task_id TEXT NOT NULL,
                 subscription_id TEXT NOT NULL, kind TEXT NOT NULL, stamp TEXT NOT NULL,
                 due REAL NOT NULL, status TEXT NOT NULL DEFAULT 'pending',
@@ -357,8 +358,12 @@ def remove_course(course_id: str):
                     db.execute(f'UPDATE {table} SET data=? WHERE id=?',
                                (json.dumps(entry, ensure_ascii=False), row['id']))
                     detached[table] += 1
+        # A grade means nothing without its course, so grades go with it.
+        removed = [r['id'] for r in db.execute('SELECT id,data FROM grades').fetchall()
+                   if json.loads(r['data']).get('course_id') == course_id]
+        db.executemany('DELETE FROM grades WHERE id=?', [(g,) for g in removed])
         db.execute('DELETE FROM courses WHERE id=?', (course_id,))
-    return {'ok': True, 'detached': detached}
+    return {'ok': True, 'detached': detached, 'grades_removed': len(removed)}
 
 
 class Task(BaseModel):
@@ -943,6 +948,11 @@ def import_course(body: ImportCourse):
     return put('courses', old | {'kind': 'college', 'archive_account': body.account, 'archive_course': body.course})
 
 
+def grade_overview():
+    from .grades import overview
+    return overview()
+
+
 @app.get('/api/state', dependencies=[Depends(authorized)])
 def state():
     root = vault_root()
@@ -957,7 +967,7 @@ def state():
             'task_defaults': {'duration_minutes': setting('default_task_minutes', 25)},
             'user': current_user_public(), 'archive': archive_access(), 'college': college_profile_public(), 'telegram_bot': telegram_bot(),
             'exams': sorted(rows('exams'), key=lambda e: (e['date'], e.get('time') or '')),
-            'cards_due': sum(c['due'] <= cairo_today() for c in rows('cards'))}
+            'cards_due': sum(c['due'] <= cairo_today() for c in rows('cards')), 'grades': grade_overview()}
 
 
 def cairo_today():
@@ -1051,6 +1061,8 @@ from .exams import router as exams_router  # noqa: E402  (exam timetable + study
 app.include_router(exams_router)
 from .cards import router as cards_router  # noqa: E402  (flashcards, spaced repetition)
 app.include_router(cards_router)
+from .grades import router as grades_router  # noqa: E402  (college grades: sheets, quizzes, midterm, final)
+app.include_router(grades_router)
 from .cp import router as cp_router  # noqa: E402  (Codeforces / LeetCode tracker)
 app.include_router(cp_router)
 from .calendar_feed import router as calendar_router  # noqa: E402  (private iCalendar feed)

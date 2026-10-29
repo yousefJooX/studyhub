@@ -26,13 +26,15 @@ PROTOCOL_VERSIONS = ('2025-06-18', '2025-03-26', '2024-11-05')
 SERVER_INFO = {'name': 'studyhub', 'title': 'StudyHub — مساحتي الدراسية', 'version': '1.0.0'}
 INSTRUCTIONS = (
     "StudyHub is the user's personal study workspace: university courses, tasks with deadlines, "
-    "a weekly timetable, exams with a study plan, flashcards, Obsidian lecture notes and uploaded files. "
+    "a weekly timetable, exams with a study plan, flashcards, college grades, Obsidian lecture notes and uploaded files. "
     "Times are Africa/Cairo. Call get_today first for context. Prefer search_notes + read_note before "
     "answering questions about course material, and cite the note title/path you used. "
     "To build an exam plan, call plan_study with apply=false first, show the user the summary, and apply "
     "only when they agree. To quiz the user, take cards from list_flashcards, ask the front, wait for "
-    "their answer, then record it with review_flashcard. Ask before deleting or overwriting anything "
-    "(delete_exam, delete_slot, update_*); every create_*/update_*/delete_* tool changes real data."
+    "their answer, then record it with review_flashcard. When the user sends grades (a list, a grade sheet "
+    "or a screenshot), record every row with add_grades, then show what was saved with the course totals. "
+    "Ask before deleting or overwriting anything (delete_exam, delete_slot, delete_grade, update_*); "
+    "every create_*/update_*/delete_* tool changes real data."
 )
 router = APIRouter()
 DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -508,6 +510,77 @@ def tool_task_timer(args):
     return {'updated': task_view(task, courses), 'timer': task.get('timer', {}).get('state')}
 
 
+def grade_view(grade, courses):
+    return {'id': grade['id'], 'course': courses.get(grade['course_id'], {}).get('title', ''), 'kind': grade['kind'],
+            'title': grade.get('title') or grade['kind'].capitalize(), 'score': grade['score'], 'out_of': grade['out_of'],
+            'date': grade.get('date', ''), 'note': grade.get('note', '')}
+
+
+def college_id(value, courses):
+    course_id = resolve_course(value, courses)
+    if not course_id:
+        raise ValueError('course is required: grades belong to a college course')
+    if courses[course_id].get('kind') != 'college':
+        raise ValueError(f'"{courses[course_id]["title"]}" is a personal course; grades are for college courses only')
+    return course_id
+
+
+def tool_list_grades(args):
+    from .grades import overview
+    courses = course_index()
+    course_id = college_id(args['course'], courses) if args.get('course') else ''
+    data = overview(course_id)
+    return {'courses': [{'course': c['title'], 'total_so_far': f"{c['earned']:g} / {c['counted']:g}" if c['counted'] else None,
+                         'percent': c['percent'], 'course_total': c['total'], 'marks_split': c['split'],
+                         'by_kind': {k: v for k, v in c['kinds'].items() if v['count'] or (c['split'] or {}).get(k)}}
+                        for c in data['courses']],
+            'grades': [grade_view(g, courses) for g in data['grades']]}
+
+
+GRADE_FIELDS = ('kind', 'title', 'score', 'out_of', 'date', 'note')
+
+
+def tool_add_grades(args):
+    from .grades import Grade, GradeBatch, add_grades
+    courses = course_index()
+    items = args.get('grades') or []
+    if not items:
+        raise ValueError('grades must hold at least one {"kind", "score", "out_of"}')
+    batch = [Grade(course_id=college_id(g.get('course') or args.get('course', ''), courses), **{k: g[k] for k in GRADE_FIELDS if k in g})
+             for g in items[:100]]
+    result = add_grades(GradeBatch(grades=batch))
+    return {'created': {'title': f"{len(result['grades'])} grades"}, 'added': result['added'], 'updated_existing': result['updated'],
+            'grades': [grade_view(g, courses) for g in result['grades']]}
+
+
+def tool_update_grade(args):
+    from .grades import Grade, edit
+    courses = course_index()
+    existing = core.get('grades', args['grade_id'])
+    data = {k: existing[k] for k in ('course_id', *GRADE_FIELDS) if k in existing}
+    if 'course' in args:
+        data['course_id'] = college_id(args['course'], courses)
+    data |= {k: args[k] for k in GRADE_FIELDS if k in args}
+    return {'updated': grade_view(edit(existing['id'], Grade(**data)), courses)}
+
+
+def tool_delete_grade(args):
+    from .grades import delete_grade
+    courses = course_index()
+    grade = grade_view(core.get('grades', args['grade_id']), courses)
+    delete_grade(args['grade_id'])
+    return {'deleted': grade}
+
+
+def tool_set_grade_split(args):
+    from .grades import Split, set_split
+    courses = course_index()
+    course_id = college_id(args['course'], courses)
+    result = set_split(course_id, Split(**{k: args.get(k, 0) for k in ('sheet', 'quiz', 'midterm', 'final')}))
+    return {'updated': {'title': result['title'], 'marks_split': result['split'], 'course_total': result['total'],
+                        'total_so_far': f"{result['earned']:g} / {result['counted']:g}", 'percent': result['percent']}}
+
+
 def string(desc, **extra):
     return {'type': 'string', 'description': desc, **extra}
 
@@ -668,6 +741,42 @@ TOOLS = [
          'task_id': string('Task id from list_tasks/get_today'), 'action': string('start, pause or reset', enum=['start', 'pause', 'reset']),
          'minutes': {'type': 'integer', 'minimum': 1, 'maximum': 1440, 'description': 'Session length; only when starting fresh or resetting'}}},
      'annotations': {'readOnlyHint': False, 'destructiveHint': False}},
+    {'name': 'list_grades', 'title': 'List grades', 'handler': tool_list_grades,
+     'description': 'College grades (sheets, quizzes, midterm, final) with each course\'s total so far and percent. '
+                    'With a marks split, a kind counts as its share of the course marks.',
+     'inputSchema': {'type': 'object', 'properties': {'course': COURSE}}, 'annotations': {'readOnlyHint': True}},
+    {'name': 'add_grades', 'title': 'Add grades', 'handler': tool_add_grades,
+     'description': 'Record grades for college courses, e.g. from a grade sheet or a screenshot the user sends. '
+                    'The same course + kind + title again updates that grade instead of adding a copy. '
+                    'Sheets and quizzes without a title are numbered (Sheet 1, Sheet 2…).',
+     'inputSchema': {'type': 'object', 'required': ['grades'], 'properties': {
+         'course': string('College course for every grade below, unless a grade names its own'),
+         'grades': {'type': 'array', 'minItems': 1, 'maxItems': 100, 'items': {'type': 'object', 'required': ['kind', 'score', 'out_of'], 'properties': {
+             'course': string('College course id or (part of) its title'),
+             'kind': string('sheet, quiz, midterm or final', enum=['sheet', 'quiz', 'midterm', 'final']),
+             'title': string('e.g. "Sheet 3" or "Quiz 2"; optional'), 'score': {'type': 'number', 'minimum': 0},
+             'out_of': {'type': 'number', 'minimum': 0.01, 'description': 'The maximum, e.g. 10'}, 'date': string('YYYY-MM-DD, optional'), 'note': string('Optional')}}}}},
+     'annotations': {'readOnlyHint': False, 'destructiveHint': False}},
+    {'name': 'update_grade', 'title': 'Change grade', 'handler': tool_update_grade,
+     'description': 'Change one grade (score, maximum, title…). Only the fields you pass change. Grade ids come from list_grades.',
+     'inputSchema': {'type': 'object', 'required': ['grade_id'], 'properties': {
+         'grade_id': string('Grade id from list_grades'), 'course': string('College course'),
+         'kind': string('sheet, quiz, midterm or final', enum=['sheet', 'quiz', 'midterm', 'final']), 'title': string('Title'),
+         'score': {'type': 'number', 'minimum': 0}, 'out_of': {'type': 'number', 'minimum': 0.01, 'description': 'The maximum, e.g. 10'},
+         'date': string('YYYY-MM-DD or ""'), 'note': string('Note')}},
+     'annotations': {'readOnlyHint': False, 'destructiveHint': False, 'idempotentHint': True}},
+    {'name': 'delete_grade', 'title': 'Delete grade', 'handler': tool_delete_grade,
+     'description': 'Remove one grade. Ask the user first.',
+     'inputSchema': {'type': 'object', 'required': ['grade_id'], 'properties': {'grade_id': string('Grade id from list_grades')}},
+     'annotations': {'readOnlyHint': False, 'destructiveHint': True}},
+    {'name': 'set_grade_split', 'title': 'Course marks split', 'handler': tool_set_grade_split,
+     'description': 'How many of a college course\'s marks each kind is worth, e.g. sheet 10, quiz 10, midterm 20, final 60. '
+                    'All zeros removes the split (the total is then the plain sum of the scores).',
+     'inputSchema': {'type': 'object', 'required': ['course'], 'properties': {
+         'course': string('College course id or (part of) its title'),
+         **{k: {'type': 'number', 'minimum': 0, 'description': f'Marks for the {k}' + ('s' if k in ('sheet', 'quiz') else '')}
+            for k in ('sheet', 'quiz', 'midterm', 'final')}}},
+     'annotations': {'readOnlyHint': False, 'destructiveHint': False, 'idempotentHint': True}},
 ]
 TOOL_INDEX = {t['name']: t for t in TOOLS}
 

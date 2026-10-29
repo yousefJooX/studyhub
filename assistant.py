@@ -185,7 +185,8 @@ def describe(name, args, outcome):
               'create_course': 'مادة جديدة' if 'created' in result else 'المادة موجودة', 'create_slot': 'ميعاد في الجدول',
               'create_exam': 'امتحان جديد', 'update_exam': 'اتعدّل امتحان', 'delete_exam': 'اتمسح امتحان',
               'create_flashcards': 'كروت جديدة', 'review_flashcard': 'اتراجع كارت', 'update_slot': 'اتعدّل ميعاد',
-              'delete_slot': 'اتشال ميعاد', 'task_timer': 'التايمر'}
+              'delete_slot': 'اتشال ميعاد', 'task_timer': 'التايمر', 'add_grades': 'درجات جديدة',
+              'update_grade': 'اتعدّلت درجة', 'delete_grade': 'اتمسحت درجة', 'set_grade_split': 'توزيع الدرجات'}
     if name == 'plan_study' and result.get('applied'):
         return {'tool': name, 'label': 'خطة المذاكرة', 'title': f"{result.get('created_tasks', 0)} جلسة", 'detail': f"{result.get('from', '')} → {result.get('to', '')}"}
     item = item or result.get('deleted') or {}

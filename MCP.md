@@ -1,7 +1,7 @@
 # StudyHub MCP server + API token
 
 StudyHub exposes an MCP endpoint so Claude (with your own Claude subscription) can read and
-update your tasks, timetable, exams, flashcards and notes. The same token also works as a Bearer token for every
+update your tasks, timetable, exams, flashcards, grades and notes. The same token also works as a Bearer token for every
 `/api/...` endpoint (n8n, scripts, Claude Code).
 
 ## 1. Create the token (on the server)
@@ -46,9 +46,14 @@ Only a SHA-256 hash is stored in `config.json`.
 | create_flashcards | Add a batch of cards, e.g. written from a note; duplicates are skipped |
 | review_flashcard | Grade one card after the user answered (again / hard / good / easy); sets its next review |
 | task_timer | Start, pause or reset a task's focus timer |
+| list_grades | College grades (sheets, quizzes, midterm, final) with each course's total so far and percent |
+| add_grades | Record grades, e.g. from a grade-sheet screenshot; the same course + kind + title updates instead of doubling |
+| update_grade | Change one grade |
+| delete_grade | Remove one grade (asks first) |
+| set_grade_split | How many of a course's marks each kind is worth (e.g. 10 / 10 / 20 / 60) |
 
 Ask Claude things like *"plan my exams, 3 hours a day, Friday off"*, *"make flashcards from my NLP lecture 3 note"*,
-*"quiz me on Computer Vision"*, *"move the Robotics lab to Tuesday 12–2"* or *"start a 50-minute timer on sheet 2"*.
+*"quiz me on Computer Vision"*, *"record these grades"* (with a screenshot of your grade sheet), *"move the Robotics lab to Tuesday 12–2"* or *"start a 50-minute timer on sheet 2"*.
 
 ## 4. API examples
 

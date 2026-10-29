@@ -1,4 +1,4 @@
-/* StudyHub study tools: exams + study plan, flashcards (spaced repetition), competitive programming,
+/* StudyHub study tools: exams + study plan, flashcards (spaced repetition), college grades, competitive programming,
    the calendar link and sharing a course. Loaded after app.js and uses its helpers (S, api, E, I, act,
    modal, field, …); app.js calls into window.StudyExtra for these pages. */
 'use strict';
@@ -6,6 +6,8 @@
   const KINDS = () => ({final:L('فاينال','Final'),midterm:L('ميدترم','Midterm'),quiz:L('كويز','Quiz'),practical:L('عملي','Practical'),oral:L('شفوي','Oral')});
   const WEIGHTS = () => [[1,L('خفيف','Light')],[2,L('سهل','Easy')],[3,L('متوسط','Medium')],[4,L('تقيل','Heavy')],[5,L('تقيل جدًا','Very heavy')]];
   const DAY_SHORT = () => window.StudyI18n?.lang()==='en' ? ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] : dayNames;
+  const GRADE_KINDS = () => ({sheet:L('الشيتات','Sheets'),quiz:L('الكويزات','Quizzes'),midterm:L('الميدترم','Midterm'),final:L('الفاينال','Final')});
+  const GRADE_ONE = () => ({sheet:L('شيت','Sheet'),quiz:L('كويز','Quiz'),midterm:L('ميدترم','Midterm'),final:L('فاينال','Final')});
   let plan = null, planSettings = null, cards = null, cardCourse = '', session = null, cp = null, calendar = null, calendarLink = null, drafts = null;
 
   const daysUntil = day => Math.round((new Date(day+'T12:00:00Z') - new Date(todayDate()+'T12:00:00Z')) / 86400000);
@@ -105,6 +107,50 @@
     modal(L('اختار الكروت اللي تحفظها','Pick the cards to keep'), drafts.cards.length ? `<form id="drafts-save"><div class="draft-list">${drafts.cards.map((c,i)=>`<label class="draft"><input type="checkbox" name="pick" value="${i}" checked><span><b dir="auto">${E(c.front)}</b><span dir="auto">${E(c.back)}</span></span></label>`).join('')}</div>` +
       `<div class="form-grid">${field(L('المادة','Course'), `<select name="course_id">${courseOptions(drafts.course_id||cardCourse, L('من غير مادة','No course'))}</select>`, true)}</div><div class="error" role="alert"></div><div class="modal-actions"><button type="submit" class="button">${L(`احفظ المختار`,`Save the selected`)}</button>${act('close',L('إلغاء','Cancel'),'button secondary')}</div></form>`
       : `<p>${L('مالقيتش كروت بالصيغة دي في النوت. جرّب «ولّد بالمساعد».','No cards in that syntax in this note. Try "Generate with the assistant".')}</p><div class="modal-actions">${act('x-cards-from-note',L('رجوع','Back'),'button secondary')}</div>`);
+  }
+
+  /* ------------------------------------------------------------ college grades */
+  const num = n => n==null ? '—' : String(Math.round(n*100)/100);
+  const collegeCourses = () => S.courses.filter(c => c.kind==='college');
+  const gradeTone = p => p==null ? '' : p>=85 ? 'green' : p>=65 ? '' : p>=50 ? 'warn' : 'red';
+  function gradesView() {
+    const grades = S.grades || {courses:[], grades:[]};
+    const head = heading(L('الدرجات','Grades'), L('درجات الشيتات والكويزات والميدترم والفاينال لكل مادة في الكلية، ومجموعك لحد دلوقتي.','Sheets, quizzes, midterm and final for each college course, and your total so far.'),
+      grades.courses.length ? act('x-grade', I('plus')+' '+L('درجة جديدة','New grade')) : '');
+    if (!grades.courses.length) return head + `<section class="panel">${empty(L('مفيش مواد كلية لسه','No college courses yet'), L('الدرجات لمواد الكلية بس. ضيف مادة ونوعها «كلية»، أو غيّر نوع مادة موجودة.','Grades are for college courses only. Add a course of type "College", or change the type of one you have.'), 'college-course', L('مادة كلية جديدة','New college course'))}</section>`;
+    const graded = grades.courses.filter(c => c.counted);
+    const avg = graded.length ? Math.round(graded.reduce((a,c)=>a+c.percent,0)/graded.length) : null;
+    return head + `<div class="stats grade-stats">${[[L('مواد الكلية','College courses'),grades.courses.length],[L('درجات متسجلة','Grades recorded'),grades.grades.length],[L('متوسط النسبة','Average'),avg==null?'—':avg+'%']].map(([a,b])=>`<div class="stat"><div class="stat-top">${a}</div><b>${b}</b></div>`).join('')}</div>` +
+      `<div class="grade-courses">${grades.courses.map(courseGrades).join('')}</div>` +
+      `<p class="small muted">${L('ممكن تبعت درجاتك لـ Claude (صورة أو شيت) وهو يسجلها عن طريق MCP: «سجّل درجاتي دي».','You can send your grades to Claude (a screenshot or a sheet) and it records them over MCP: "record these grades".')}</p>`;
+  }
+  function courseGrades(c) {
+    const mine = S.grades.grades.filter(g => g.course_id===c.course_id), kinds = GRADE_KINDS();
+    const total = c.total!=null ? L(`من ${num(c.total)}`,`of ${num(c.total)}`) : '';
+    return `<section class="panel grade-course" data-gcourse="${E(c.course_id)}"><div class="panel-head"><h2 dir="auto">${E(c.title)}</h2><div class="section-actions">${act('x-grade-split', I('edit')+' '+L('توزيع الدرجات','Marks split'), 'button ghost', `data-ref="${E(c.course_id)}"`)}${act('x-grade', I('plus'), 'icon-button', `data-gcourse="${E(c.course_id)}" aria-label="${E(L('درجة جديدة','New grade'))}"`)}</div></div>` +
+      `<div class="grade-total ${gradeTone(c.percent)}"><div><b>${c.counted?`${num(c.earned)} / ${num(c.counted)}`:'—'}</b><small>${c.counted?L('مجموعك لحد دلوقتي','Your total so far'):L('لسه مفيش درجات','No grades yet')}${total?' · '+total:''}</small></div><span class="grade-percent">${c.percent==null?'':c.percent+'%'}</span></div>` +
+      (c.percent!=null?`<div class="wk-track grade-bar"><span style="width:${Math.min(100,c.percent)}%"></span></div>`:'') +
+      `<div class="grade-kinds">${Object.keys(kinds).map(k => { const row = c.kinds[k], list = mine.filter(g=>g.kind===k);
+        return `<div class="grade-kind"><div class="grade-kind-head"><b>${kinds[k]}</b><span>${row.count?`${num(row.score)} / ${num(row.out_of)}`+(row.worth?` · ${num(row.marks)} ${L('من','of')} ${num(row.worth)}`:''):row.worth?`${L('من','of')} ${num(row.worth)}`:'—'}</span></div>` +
+          (list.length ? list.map(g=>`<button type="button" class="grade-chip" data-x="grade-edit" data-ref="${E(g.id)}"><span dir="auto">${E(g.title||GRADE_ONE()[g.kind])}</span><b>${num(g.score)}/${num(g.out_of)}</b></button>`).join('')
+            : `<button type="button" class="grade-chip empty-chip" data-x="grade" data-gcourse="${E(c.course_id)}" data-kind="${k}">${I('plus')} ${L('ضيف','Add')}</button>`) + `</div>`; }).join('')}</div></section>`;
+  }
+  function gradeEditor(item={}) {
+    const options = collegeCourses().map(c=>`<option value="${E(c.id)}" ${c.id===item.course_id?'selected':''}>${E(c.title)}</option>`).join('');
+    modal(item.id?L('تعديل الدرجة','Edit grade'):L('درجة جديدة','New grade'), `<form id="grade-form" data-ref="${E(item.id||'')}"><div class="form-grid">` +
+      field(L('المادة','Course'), `<select name="course_id" required>${options}</select>`) +
+      field(L('النوع','Type'), select('kind', Object.entries(GRADE_ONE()), item.kind||'sheet')) +
+      field(L('الاسم · اختياري','Name · optional'), input('title', item.title||'', 'text', `maxlength="120" placeholder="${E(L('مثلًا Sheet 3','e.g. Sheet 3'))}"`), true) +
+      field(L('درجتك','Your score'), input('score', item.score??'', 'number', 'required min="0" max="1000" step="any" inputmode="decimal"')) +
+      field(L('من كام','Out of'), input('out_of', item.out_of??'', 'number', 'required min="0.01" max="1000" step="any" inputmode="decimal"')) +
+      field(L('التاريخ · اختياري','Date · optional'), input('date', item.date||'', 'date')) + field(L('ملاحظة','Note'), input('note', item.note||'', 'text', 'maxlength="500"')) +
+      `</div><div class="error" role="alert"></div><div class="modal-actions"><button type="submit" class="button">${L('حفظ','Save')}</button>${act('close',L('إلغاء','Cancel'),'button secondary')}${item.id?act('x-grade-delete',L('حذف','Delete'),'button danger',`data-ref="${E(item.id)}"`):''}</div></form>`);
+  }
+  function splitEditor(courseId) {
+    const c = S.grades.courses.find(c=>c.course_id===courseId), split = c.split || {}, kinds = GRADE_KINDS();
+    modal(L('توزيع درجات المادة','Course marks split'), `<form id="split-form" data-ref="${E(courseId)}"><p dir="auto"><b>${E(c.title)}</b></p><p class="small muted">${L('كل نوع واخد كام درجة من درجة المادة؟ مثلًا شيتات 10، كويزات 10، ميدترم 20، فاينال 60. سيبه صفر لو مش محسوب. لو كله صفر، المجموع بيبقى جمع الدرجات عادي.','How many of the course marks is each kind worth? e.g. sheets 10, quizzes 10, midterm 20, final 60. Leave 0 if it does not count. All zeros: the total is the plain sum of your scores.')}</p><div class="form-grid">` +
+      Object.keys(kinds).map(k=>field(kinds[k], input(k, split[k]||0, 'number', 'min="0" max="1000" step="any" inputmode="decimal"'))).join('') +
+      `</div><div class="error" role="alert"></div><div class="modal-actions"><button type="submit" class="button">${L('حفظ','Save')}</button>${act('close',L('إلغاء','Cancel'),'button secondary')}</div></form>`);
   }
 
   /* ------------------------------------------------------------ competitive programming */
@@ -209,6 +255,10 @@
       if (x==='plan-make') { b.disabled=true; const r = await api('/api/exams/plan','POST',{...plan.request, dry_run:false}); plan=null; planSettings=await api('/api/exams/plan/settings'); await refresh(); return toast(L(`اتضافت ${r.created} جلسة لمهامك`,`${r.created} sessions added to your tasks`)); }
       if (x==='plan-cancel') { plan=null; return renderPage(); }
       if (x==='plan-clear') { b.disabled=true; const r = await api('/api/exams/plan','DELETE'); await refresh(); return toast(L(`اتشالت ${r.removed} جلسة`,`${r.removed} sessions removed`)); }
+      if (x==='grade') return gradeEditor({course_id:b.dataset.gcourse||collegeCourses()[0]?.id, kind:b.dataset.kind});
+      if (x==='grade-edit') return gradeEditor(S.grades.grades.find(g=>g.id===b.dataset.ref));
+      if (x==='grade-split') return splitEditor(b.dataset.ref);
+      if (x==='grade-delete') { b.disabled=true; await api('/api/grades/'+b.dataset.ref,'DELETE'); $('#modal').close(); await refresh(); return toast(L('اتمسحت الدرجة','Grade deleted')); }
       if (x==='card') return cardEditor();
       if (x==='card-edit') return cardEditor(cards.cards.find(c=>c.id===b.dataset.ref));
       if (x==='card-delete') { b.disabled=true; await api('/api/cards/'+b.dataset.ref,'DELETE'); $('#modal').close(); await reloadCards(); await refresh(); return toast(L('اتمسح الكارت','Card deleted')); }
@@ -247,7 +297,7 @@
     if (event.target.dataset.xChange==='card-course') { cardCourse = event.target.value; await renderPage(); }
   });
   document.addEventListener('submit', async event => {
-    const form = event.target, ids = ['exam-form','plan-form','card-form','draft-form','drafts-save','cp-form','share-code-form'];
+    const form = event.target, ids = ['grade-form','split-form','exam-form','plan-form','card-form','draft-form','drafts-save','cp-form','share-code-form'];
     if (!ids.includes(form.id)) return;
     event.preventDefault();
     const button = event.submitter || form.querySelector('[type="submit"]'), error = form.querySelector('.error');
@@ -258,6 +308,16 @@
         const body = {...data, duration_minutes:Number(data.duration_minutes||0), weight:Number(data.weight)};
         await api('/api/exams'+(form.dataset.ref?'/'+form.dataset.ref:''), form.dataset.ref?'PUT':'POST', body);
         $('#modal').close(); await refresh(); return toast(L('اتحفظ الامتحان','Exam saved'));
+      }
+      if (form.id==='grade-form') {
+        const body = {...data, score:Number(data.score), out_of:Number(data.out_of)};
+        if (form.dataset.ref) await api('/api/grades/'+form.dataset.ref,'PUT',body);
+        else { const r = await api('/api/grades','POST',{grades:[body]}); if (r.updated) toast(L('الدرجة دي كانت موجودة واتحدّثت','That grade was already there; it was updated')); }
+        $('#modal').close(); await refresh(); return toast(L('اتحفظت الدرجة','Grade saved'));
+      }
+      if (form.id==='split-form') {
+        await api('/api/grades/split/'+form.dataset.ref,'PUT',Object.fromEntries(Object.entries(data).map(([k,v])=>[k,Number(v||0)])));
+        $('#modal').close(); await refresh(); return toast(L('اتحفظ التوزيع','Split saved'));
       }
       if (form.id==='plan-form') {
         const request = {lang:window.StudyI18n?.lang()||'ar', minutes_per_day:Number(data.minutes_per_day), session_minutes:Number(data.session_minutes), rest_days:[...form.querySelectorAll('[name="rest"]:checked')].map(c=>Number(c.value))};
@@ -289,6 +349,7 @@
   window.StudyExtra = {
     pages: {
       exams: {view: examsView, load: async () => { plan = null; planSettings = await api('/api/exams/plan/settings').catch(()=>null); }},
+      grades: {view: gradesView},
       review: {view: reviewView, load: async () => { session = null; await reloadCards(); }},
       cp: {view: cpView, load: async () => { cp = await api('/api/cp'); }},
     },

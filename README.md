@@ -20,7 +20,7 @@ The friends site is live at **https://studyhub.taila6871a.ts.net**. Open it, cre
 https://github.com/user-attachments/assets/f4aa1937-b32c-4c3b-8485-3dd897fb981b
 
 
-Sign up, courses, the weekly timetable, tasks and deadline reminders, **exams and a one-click study plan**, the focus timer, **flashcards from your Obsidian notes**, **competitive programming (Codeforces + LeetCode)**, the AI assistant with a free Groq key, Obsidian notes, the weekly review, **the calendar link**, **sharing a course** and **the dark theme**.
+Sign up, courses, the weekly timetable, tasks and deadline reminders, **exams and a one-click study plan**, **college grades**, the focus timer, **flashcards from your Obsidian notes**, **competitive programming (Codeforces + LeetCode)**, the AI assistant with a free Groq key, Obsidian notes, the weekly review, **the calendar link**, **sharing a course** and **the dark theme**.
 
 ### For HNU FCSIT students (2½ minutes)
 
@@ -48,6 +48,7 @@ Downloads: [everyone](docs/walkthrough-everyone.mp4) · [FCSIT students](docs/wa
   - Code highlighting, a table of contents and a reading-progress bar.
   - A collapsible folder tree.
 - **Exams and a study plan:** enter your exam timetable (course, date, how heavy it is). One click spreads study sessions over the days left: the day before each exam is its final review, other days go to the closest and heaviest exam, and you choose the hours per day, the session length and rest days. Sessions are ordinary tasks, so they show up in Today, reminders and the weekly review. Countdowns sit on the overview.
+- **College grades:** for each college course, record sheets, quizzes, the midterm and the final as a score out of a maximum, and see your total so far and the percent. Give a course its marks split (e.g. sheets 10, quizzes 10, midterm 20, final 60) and each kind counts as its share. Send Claude a screenshot of your grade sheet and it records every row over MCP.
 - **Flashcards (spaced repetition):** cards with Again / Hard / Good / Easy grading on an SM-2 schedule like Anki, keyboard shortcuts (Space, 1–4) and a due count in the sidebar. Make them by hand, pull them out of an Obsidian note that uses the Spaced Repetition plugin syntax (`question :: answer`, `:::` for both ways, or a `?` line), or let the assistant write them from a note. You pick which drafts to keep.
 - **Competitive programming:** add your Codeforces handle and/or LeetCode username to see rating, rank, solved problems, the daily streak, your strongest tags and recent solves. You also get a problem of the day (an unsolved Codeforces problem a bit above your rating, plus LeetCode's daily) and the upcoming Codeforces and LeetCode contests, one click from your plan.
 - **Calendar link:** a private iCalendar link for Google Calendar, Apple Calendar or Outlook. It carries open deadlines, timed tasks, the weekly timetable, exams and (optionally) contests, and refreshes by itself.
@@ -55,7 +56,7 @@ Downloads: [everyone](docs/walkthrough-everyone.mp4) · [FCSIT students](docs/wa
 - **Deadline voice reminders:** Web Push reminders at 1 day, 12 hours and 1 hour before a deadline. Each stage plays a random clip from a folder of your own recorded voice notes. A last stage, *When you finish a task*, plays one of its clips when you tick a task off or a focus timer ends.
 - **College tasks from the class channels:** pluggable per faculty (see [Bring it to your faculty](#bring-it-to-your-faculty)). For HNU FCSIT students, every assignment posted on the HNU FCSIT WhatsApp channels for their level and program is added to their tasks with its deadline and course. The data comes from [HNU Board](https://github.com/moustafasayed068/hnu-board) by Moustafa Sayed.
 - **In-app assistant (optional):** chat with any OpenAI-compatible model (Groq, Gemini, OpenRouter, Ollama…) that can create tasks, courses, timetable slots and notes for you. Each user can add their own free Groq, Gemini or OpenRouter key in Settings, with step-by-step instructions. The key is checked with the provider and stored encrypted. The site's own key, if set, is a capped fallback. A fallback provider takes over when the main one is rate-limited.
-- **MCP server:** connect Claude (with your own subscription) as a custom connector. It gets 24 tools: today, tasks and their focus timer, courses, the timetable (add, change, remove), exams and the study plan, flashcards (create, quiz, grade), notes search/read/create, files and the weekly review. The in-app assistant uses the same tools. See [MCP.md](MCP.md).
+- **MCP server:** connect Claude (with your own subscription) as a custom connector. It gets 29 tools: today, tasks and their focus timer, courses, the timetable (add, change, remove), exams and the study plan, flashcards (create, quiz, grade), college grades (add, change, remove, the marks split), notes search/read/create, files and the weekly review. The in-app assistant uses the same tools. See [MCP.md](MCP.md).
 - **Friends mode:**
   - Accounts: open sign-up and per-user data folders.
   - Limits: quotas and a daily assistant cap.

@@ -502,3 +502,26 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--tint-2);border-c
 .focus-now.paused .focus-now-track span{background:var(--tint-2)}
 @media(max-width:720px){.focus-now-body{padding:16px}.focus-now-clock{justify-content:flex-start}.focus-now-clock .timer-count{font-size:32px}}
 @media(prefers-reduced-motion:reduce){.focus-now-track span{transition:none}}
+/* college grades */
+.grade-stats{grid-template-columns:repeat(3,1fr)}
+.grade-courses{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:18px;margin-bottom:18px}
+.grade-course .panel-head h2{overflow-wrap:anywhere}
+.grade-total{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px 10px}
+.grade-total b{display:block;font-size:26px;font-weight:650;direction:ltr;text-align:start;font-variant-numeric:tabular-nums}
+.grade-total small{color:var(--muted);font-size:12px}
+.grade-percent{font-size:15px;font-weight:700;color:var(--accent-hover,var(--accent));background:var(--pale);border-radius:999px;padding:4px 12px;direction:ltr}
+.grade-total.warn .grade-percent{color:#b07f22;background:color-mix(in srgb,#c9973a 18%,transparent)}
+.grade-total.red .grade-percent{color:var(--red);background:var(--danger-bg,#fbefef)}
+.grade-bar{margin:0 22px 14px}
+.grade-total.warn+.grade-bar span{background:#c9973a}.grade-total.red+.grade-bar span{background:var(--red)}
+.grade-kinds{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line)}
+.grade-kind{padding:14px 18px;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;border-bottom:1px solid var(--line)}
+.grade-kind:nth-child(odd){border-inline-end:1px solid var(--line)}
+.grade-kind:nth-last-child(-n+2){border-bottom:0}
+.grade-kind-head{width:100%;display:flex;justify-content:space-between;gap:8px;font-size:12px;margin-bottom:4px}
+.grade-kind-head span{color:var(--muted);direction:ltr;font-variant-numeric:tabular-nums}
+.grade-chip{display:inline-flex;gap:7px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;background:var(--soft,#f9fafb)}
+.grade-chip b{direction:ltr;font-variant-numeric:tabular-nums;font-weight:650}
+.grade-chip:hover{border-color:var(--accent)}
+.grade-chip.empty-chip{color:var(--muted);border-style:dashed;background:none}.grade-chip svg{width:13px;height:13px}
+@media (max-width:700px){.grade-courses{grid-template-columns:1fr}.grade-stats{grid-template-columns:repeat(3,1fr)}.grade-stats .stat b{font-size:22px}}

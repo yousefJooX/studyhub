@@ -38,7 +38,8 @@ def test_mcp_every_tool(users, env, tmp_path):
     assert tools == {'get_today', 'list_tasks', 'create_task', 'update_task', 'list_courses', 'get_schedule', 'search_notes',
                      'read_note', 'create_note', 'list_files', 'weekly_review', 'create_course', 'create_slot',
                      'list_exams', 'create_exam', 'update_exam', 'delete_exam', 'plan_study', 'list_flashcards',
-                     'create_flashcards', 'review_flashcard', 'update_slot', 'delete_slot', 'task_timer'}
+                     'create_flashcards', 'review_flashcard', 'update_slot', 'delete_slot', 'task_timer',
+                     'list_grades', 'add_grades', 'update_grade', 'delete_grade', 'set_grade_split'}
     course = call(client, token, 'create_course', title='NLP')
     task = call(client, token, 'create_task', title='Sheet 1', course='nlp', due='2030-01-01T23:59')['created']
     assert task['course'] == 'NLP'
