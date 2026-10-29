@@ -116,7 +116,7 @@
   function gradesView() {
     const grades = S.grades || {courses:[], grades:[]};
     const head = heading(L('الدرجات','Grades'), L('درجات الشيتات والكويزات والميدترم والفاينال لكل مادة في الكلية، ومجموعك لحد دلوقتي.','Sheets, quizzes, midterm and final for each college course, and your total so far.'),
-      grades.courses.length ? act('x-grade', I('plus')+' '+L('درجة جديدة','New grade')) : '');
+      grades.courses.length ? act('x-grade-new', I('plus')+' '+L('درجة جديدة','New grade')) : '');
     if (!grades.courses.length) return head + `<section class="panel">${empty(L('مفيش مواد كلية لسه','No college courses yet'), L('الدرجات لمواد الكلية بس. ضيف مادة ونوعها «كلية»، أو غيّر نوع مادة موجودة.','Grades are for college courses only. Add a course of type "College", or change the type of one you have.'), 'college-course', L('مادة كلية جديدة','New college course'))}</section>`;
     const graded = grades.courses.filter(c => c.counted);
     const avg = graded.length ? Math.round(graded.reduce((a,c)=>a+c.percent,0)/graded.length) : null;
@@ -127,13 +127,13 @@
   function courseGrades(c) {
     const mine = S.grades.grades.filter(g => g.course_id===c.course_id), kinds = GRADE_KINDS();
     const total = c.total!=null ? L(`من ${num(c.total)}`,`of ${num(c.total)}`) : '';
-    return `<section class="panel grade-course" data-gcourse="${E(c.course_id)}"><div class="panel-head"><h2 dir="auto">${E(c.title)}</h2><div class="section-actions">${act('x-grade-split', I('edit')+' '+L('توزيع الدرجات','Marks split'), 'button ghost', `data-ref="${E(c.course_id)}"`)}${act('x-grade', I('plus'), 'icon-button', `data-gcourse="${E(c.course_id)}" aria-label="${E(L('درجة جديدة','New grade'))}"`)}</div></div>` +
+    return `<section class="panel grade-course" data-gcourse="${E(c.course_id)}"><div class="panel-head"><h2 dir="auto">${E(c.title)}</h2><div class="section-actions">${act('x-grade-split', I('edit')+' '+L('توزيع الدرجات','Marks split'), 'button ghost', `data-ref="${E(c.course_id)}"`)}${act('x-grade-new', I('plus'), 'icon-button', `data-gcourse="${E(c.course_id)}" aria-label="${E(L('درجة جديدة','New grade'))}"`)}</div></div>` +
       `<div class="grade-total ${gradeTone(c.percent)}"><div><b>${c.counted?`${num(c.earned)} / ${num(c.counted)}`:'—'}</b><small>${c.counted?L('مجموعك لحد دلوقتي','Your total so far'):L('لسه مفيش درجات','No grades yet')}${total?' · '+total:''}</small></div><span class="grade-percent">${c.percent==null?'':c.percent+'%'}</span></div>` +
       (c.percent!=null?`<div class="wk-track grade-bar"><span style="width:${Math.min(100,c.percent)}%"></span></div>`:'') +
       `<div class="grade-kinds">${Object.keys(kinds).map(k => { const row = c.kinds[k], list = mine.filter(g=>g.kind===k);
         return `<div class="grade-kind"><div class="grade-kind-head"><b>${kinds[k]}</b><span>${row.count?`${num(row.score)} / ${num(row.out_of)}`+(row.worth?` · ${num(row.marks)} ${L('من','of')} ${num(row.worth)}`:''):row.worth?`${L('من','of')} ${num(row.worth)}`:'—'}</span></div>` +
           (list.length ? list.map(g=>`<button type="button" class="grade-chip" data-x="grade-edit" data-ref="${E(g.id)}"><span dir="auto">${E(g.title||GRADE_ONE()[g.kind])}</span><b>${num(g.score)}/${num(g.out_of)}</b></button>`).join('')
-            : `<button type="button" class="grade-chip empty-chip" data-x="grade" data-gcourse="${E(c.course_id)}" data-kind="${k}">${I('plus')} ${L('ضيف','Add')}</button>`) + `</div>`; }).join('')}</div></section>`;
+            : `<button type="button" class="grade-chip empty-chip" data-x="grade-new" data-gcourse="${E(c.course_id)}" data-kind="${k}">${I('plus')} ${L('ضيف','Add')}</button>`) + `</div>`; }).join('')}</div></section>`;
   }
   function gradeEditor(item={}) {
     const options = collegeCourses().map(c=>`<option value="${E(c.id)}" ${c.id===item.course_id?'selected':''}>${E(c.title)}</option>`).join('');
@@ -255,7 +255,7 @@
       if (x==='plan-make') { b.disabled=true; const r = await api('/api/exams/plan','POST',{...plan.request, dry_run:false}); plan=null; planSettings=await api('/api/exams/plan/settings'); await refresh(); return toast(L(`اتضافت ${r.created} جلسة لمهامك`,`${r.created} sessions added to your tasks`)); }
       if (x==='plan-cancel') { plan=null; return renderPage(); }
       if (x==='plan-clear') { b.disabled=true; const r = await api('/api/exams/plan','DELETE'); await refresh(); return toast(L(`اتشالت ${r.removed} جلسة`,`${r.removed} sessions removed`)); }
-      if (x==='grade') return gradeEditor({course_id:b.dataset.gcourse||collegeCourses()[0]?.id, kind:b.dataset.kind});
+      if (x==='grade-new') return gradeEditor({course_id:b.dataset.gcourse||collegeCourses()[0]?.id, kind:b.dataset.kind});
       if (x==='grade-edit') return gradeEditor(S.grades.grades.find(g=>g.id===b.dataset.ref));
       if (x==='grade-split') return splitEditor(b.dataset.ref);
       if (x==='grade-delete') { b.disabled=true; await api('/api/grades/'+b.dataset.ref,'DELETE'); $('#modal').close(); await refresh(); return toast(L('اتمسحت الدرجة','Grade deleted')); }
