@@ -9,7 +9,7 @@ It has two modes:
 
 ## Try it
 
-The friends site is live at **https://study-joox-friends.loophole.site**. Open it, create an account (you may need an invite code from the owner) and install it on your phone from the browser menu.
+The friends site is live at **https://studyhub.taila6871a.ts.net**. Open it, create an account (you may need an invite code from the owner) and install it on your phone from the browser menu.
 
 ## Video walkthrough
 
@@ -171,7 +171,7 @@ bash deploy/setup_friends.sh                      # one-time: friends site on po
 
 The deploy script refuses to run when the folder has uncommitted changes or differs from GitHub, so the server always runs a pushed commit.
 
-For HTTPS you can put a domain behind Caddy (`deploy/Caddyfile.example`). The other option is a free [loophole](https://loophole.cloud) tunnel (`deploy/studyhub-tunnel.service.example`). The service template is `deploy/studyhub.service.example`.
+For HTTPS you can put a domain behind Caddy (`deploy/Caddyfile.example`), or use [Tailscale Funnel](https://tailscale.com/kb/1223/funnel) for free: `tailscale funnel --bg --https=443 http://127.0.0.1:8092` makes a site public at `https://<machine>.<tailnet>.ts.net`, and `tailscale serve` instead keeps one private to your own devices. A [loophole](https://loophole.cloud) tunnel (`deploy/studyhub-tunnel.service.example`) also works, but it drops often. The service template is `deploy/studyhub.service.example`.
 
 ## Tests
 
