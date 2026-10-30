@@ -38,7 +38,7 @@ def test_mcp_every_tool(users, env, tmp_path):
     assert tools == {'get_today', 'list_tasks', 'create_task', 'update_task', 'list_courses', 'get_schedule', 'search_notes',
                      'read_note', 'create_note', 'list_files', 'weekly_review', 'create_course', 'create_slot',
                      'list_exams', 'create_exam', 'update_exam', 'delete_exam', 'plan_study', 'list_flashcards',
-                     'create_flashcards', 'review_flashcard', 'update_slot', 'delete_slot', 'task_timer',
+                     'create_flashcards', 'review_flashcard', 'update_flashcard', 'delete_flashcard', 'update_slot', 'delete_slot', 'task_timer',
                      'list_grades', 'add_grades', 'update_grade', 'delete_grade', 'set_grade_split'}
     course = call(client, token, 'create_course', title='NLP')
     task = call(client, token, 'create_task', title='Sheet 1', course='nlp', due='2030-01-01T23:59')['created']
@@ -89,6 +89,14 @@ def test_mcp_exams_plan_flashcards_slots_and_timer(users, env):
     graded = call(client, token, 'review_flashcard', card_id=due['cards'][0]['id'], grade='good')
     assert graded['next_review'] == (date.fromisoformat(due['cards'][0]['due']) + timedelta(days=1)).isoformat()
     assert call(client, token, 'list_flashcards')['due_today'] == 1
+    # find a card by its text, change it (the schedule stays), then remove it
+    found = call(client, token, 'list_flashcards', due_only=False, search='sobel')
+    assert [c['id'] for c in found['cards']] == [due['cards'][0]['id']]
+    edited = call(client, token, 'update_flashcard', card_id=found['cards'][0]['id'], back='Edges and their direction')
+    assert edited['updated']['front'] == 'What does Sobel detect?' and edited['updated']['back'] == 'Edges and their direction'
+    assert edited['updated']['course'] == 'Computer Vision' and edited['updated']['due'] == graded['next_review']
+    assert call(client, token, 'delete_flashcard', card_id=found['cards'][0]['id'])['deleted']['front'] == 'What does Sobel detect?'
+    assert call(client, token, 'list_flashcards', due_only=False)['total'] == 1
     # timetable: change and remove a slot
     slot = call(client, token, 'create_slot', title='CV lecture', course='Computer Vision', day='Sunday', start='09:00', end='11:00')['created']
     moved = call(client, token, 'update_slot', slot_id=slot['id'], day='Tuesday', start='12:00', end='14:00')['updated']

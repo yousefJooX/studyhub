@@ -33,7 +33,8 @@ INSTRUCTIONS = (
     "only when they agree. To quiz the user, take cards from list_flashcards, ask the front, wait for "
     "their answer, then record it with review_flashcard. When the user sends grades (a list, a grade sheet "
     "or a screenshot), record every row with add_grades, then show what was saved with the course totals. "
-    "Ask before deleting or overwriting anything (delete_exam, delete_slot, delete_grade, update_*); "
+    "To change or remove a card, find it with list_flashcards (due_only=false, search). "
+    "Ask before deleting or overwriting anything (delete_exam, delete_slot, delete_grade, delete_flashcard, update_*); "
     "every create_*/update_*/delete_* tool changes real data."
 )
 router = APIRouter()
@@ -457,6 +458,9 @@ def tool_list_flashcards(args):
     cards = [c for c in core.rows('cards') if not course_id or c.get('course_id') == course_id]
     due = [c for c in cards if c['due'] <= today]
     pick = due if args.get('due_only', True) else cards
+    needle = args.get('search', '').strip().lower()
+    if needle:
+        pick = [c for c in pick if needle in c['front'].lower() or needle in c['back'].lower()]
     pick.sort(key=lambda c: (c['due'], c.get('created', 0)))
     limit = max(1, min(int(args.get('limit', 20)), 100))
     return {'total': len(cards), 'due_today': len(due), 'cards': [card_view(c, courses) for c in pick[:limit]]}
@@ -480,6 +484,23 @@ def tool_review_flashcard(args):
     courses = course_index()
     card = review(args['card_id'], Review(grade=args['grade']))
     return {'updated': card_view(card, courses) | {'title': card['front'][:60]}, 'next_review': card['due']}
+
+
+def tool_update_flashcard(args):
+    from .cards import CardIn, edit_card
+    courses = course_index()
+    existing = core.get('cards', args['card_id'])
+    course_id = resolve_course(args['course'], courses) if 'course' in args else existing.get('course_id', '')
+    card = edit_card(existing['id'], CardIn(front=args.get('front', existing['front']), back=args.get('back', existing['back']), course_id=course_id))
+    return {'updated': card_view(card, courses) | {'title': card['front'][:60]}}
+
+
+def tool_delete_flashcard(args):
+    from .cards import delete_card
+    courses = course_index()
+    card = core.get('cards', args['card_id'])
+    delete_card(card['id'])
+    return {'deleted': card_view(card, courses) | {'title': card['front'][:60]}}
 
 
 def tool_update_slot(args):
@@ -707,9 +728,9 @@ TOOLS = [
          'language': string('Language of the session titles: ar (default) or en', enum=['ar', 'en'])}},
      'annotations': {'readOnlyHint': False, 'destructiveHint': False}},
     {'name': 'list_flashcards', 'title': 'List flashcards', 'handler': tool_list_flashcards,
-     'description': 'Flashcards (spaced repetition). By default only the cards due today, oldest first: use them to quiz the user.',
+     'description': 'Flashcards (spaced repetition). By default only the cards due today, oldest first: use them to quiz the user. To find a card to change or delete, pass due_only=false and search.',
      'inputSchema': {'type': 'object', 'properties': {
-         'course': COURSE, 'due_only': {'type': 'boolean', 'default': True},
+         'course': COURSE, 'due_only': {'type': 'boolean', 'default': True}, 'search': string('Only cards with this text in the question or the answer'),
          'limit': {'type': 'integer', 'minimum': 1, 'maximum': 100, 'default': 20}}},
      'annotations': {'readOnlyHint': True}},
     {'name': 'create_flashcards', 'title': 'Create flashcards', 'handler': tool_create_flashcards,
@@ -724,6 +745,15 @@ TOOLS = [
      'inputSchema': {'type': 'object', 'required': ['card_id', 'grade'], 'properties': {
          'card_id': string('Card id from list_flashcards'), 'grade': string('again, hard, good or easy', enum=['again', 'hard', 'good', 'easy'])}},
      'annotations': {'readOnlyHint': False, 'destructiveHint': False}},
+    {'name': 'update_flashcard', 'title': 'Change flashcard', 'handler': tool_update_flashcard,
+     'description': 'Change a card\'s question, answer or course. Only the fields you pass change; its review schedule stays. Card ids come from list_flashcards.',
+     'inputSchema': {'type': 'object', 'required': ['card_id'], 'properties': {
+         'card_id': string('Card id from list_flashcards'), 'front': string('The question'), 'back': string('The answer'), 'course': COURSE}},
+     'annotations': {'readOnlyHint': False, 'destructiveHint': False, 'idempotentHint': True}},
+    {'name': 'delete_flashcard', 'title': 'Delete flashcard', 'handler': tool_delete_flashcard,
+     'description': 'Delete a flashcard and its review history. Ask the user first.',
+     'inputSchema': {'type': 'object', 'required': ['card_id'], 'properties': {'card_id': string('Card id from list_flashcards')}},
+     'annotations': {'readOnlyHint': False, 'destructiveHint': True}},
     {'name': 'update_slot', 'title': 'Change timetable slot', 'handler': tool_update_slot,
      'description': 'Change a weekly timetable slot (day, time, place, type…). Only the fields you pass change. Slot ids come from get_schedule.',
      'inputSchema': {'type': 'object', 'required': ['slot_id'], 'properties': {

@@ -45,6 +45,8 @@ Only a SHA-256 hash is stored in `config.json`.
 | list_flashcards | Cards due today (or all), per course: use them to quiz the user |
 | create_flashcards | Add a batch of cards, e.g. written from a note; duplicates are skipped |
 | review_flashcard | Grade one card after the user answered (again / hard / good / easy); sets its next review |
+| update_flashcard | Change a card's question, answer or course; its review schedule stays |
+| delete_flashcard | Delete a card (Claude asks first) |
 | task_timer | Start, pause or reset a task's focus timer |
 | list_grades | College grades (sheets, quizzes, midterm, final) with each course's total so far and percent |
 | add_grades | Record grades, e.g. from a grade-sheet screenshot; the same course + kind + title updates instead of doubling |
